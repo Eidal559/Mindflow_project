@@ -1,6 +1,5 @@
 import React from "react";
 import styled from "styled-components";
-
 import Logo from "../assets/Svgs/star_white_48dp.svg";
 import { motion } from "framer-motion";
 import { useLocomotiveScroll } from "react-locomotive-scroll";
@@ -9,15 +8,12 @@ const Section = styled.section`
   min-height: 100vh;
   width: 100vw;
   margin: 5rem auto;
-
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-
   background-color: ${(props) => props.theme.body};
   color: ${(props) => props.theme.text};
-
   position: relative;
 `;
 
@@ -31,6 +27,7 @@ const LogoContainer = styled.div`
     width: 10vw;
     height: auto;
   }
+  
   h3 {
     font-size: ${(props) => props.theme.fontxxl};
     font-family: "Kaushan Script";
@@ -87,10 +84,10 @@ const Bottom = styled.div`
   padding: 0.5rem 0;
   margin: 0 4rem;
   font-size: ${(props) => props.theme.fontlg};
-
   display: flex;
   justify-content: space-between;
   align-items: center;
+  
   a {
     text-decoration: underline;
   }
@@ -100,6 +97,7 @@ const Bottom = styled.div`
     justify-content: center;
     width: 100%;
     margin: 0;
+    
     span {
       transform: none !important;
     }
@@ -110,27 +108,34 @@ const Bottom = styled.div`
   }
 `;
 
+const NavItem = styled.li`
+  /* Inherit styles from parent li */
+`;
+
 const Footer = () => {
   const { scroll } = useLocomotiveScroll();
 
   const handleScroll = (id) => {
     let elem = document.querySelector(id);
-
-    scroll.scrollTo(elem, {
-      offset: "-100",
-      duration: "2000",
-      easing: [0.25, 0.0, 0.35, 1.0],
-    });
+    
+    if (elem) {
+      scroll.scrollTo(elem, {
+        offset: "-100",
+        duration: "2000",
+        easing: [0.25, 0.0, 0.35, 1.0],
+      });
+    }
   };
 
   return (
     <Section>
       <LogoContainer>
-        <img data-scroll data-scroll-speed="2" src={Logo} alt="Wibe Studio" />
+        <img data-scroll data-scroll-speed="2" src={Logo} alt="MindFlow" />
         <h3 data-scroll data-scroll-speed="-1">
-          Wibe Studio
+          MindFlow
         </h3>
       </LogoContainer>
+
       <FooterComponent
         initial={{ y: "-400px" }}
         whileInView={{ y: 0 }}
@@ -139,22 +144,52 @@ const Footer = () => {
           duration: 1.5,
         }}
       >
-        <ul>
-          <li onClick={() => handleScroll("#home")}>home</li>
-          <li onClick={() => handleScroll(".about")}>about</li>
-          <li onClick={() => handleScroll("#shop")}>shop</li>
-          <li onClick={() => handleScroll("#new-arrival")}>new arrival</li>
-          <li>
-            <a href="https://google.com" target="_blank" rel="noreferrer">
-              look book
-            </a>
-          </li>
-          <li>
-            <a href="https://google.com" target="_blank" rel="noreferrer">
-              reviews
-            </a>
-          </li>
-        </ul>
+        <nav aria-label="Footer Navigation">
+          <ul>
+            <NavItem 
+              onClick={() => handleScroll("#home")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleScroll("#home")}
+            >
+              home
+            </NavItem>
+            <NavItem 
+              onClick={() => handleScroll(".about")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleScroll(".about")}
+            >
+              about
+            </NavItem>
+            <NavItem 
+              onClick={() => handleScroll("#exercises")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleScroll("#exercises")}
+            >
+              exercises
+            </NavItem>
+            <NavItem 
+              onClick={() => handleScroll("#stress-tool")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleScroll("#stress-tool")}
+            >
+              stress tool
+            </NavItem>
+            <NavItem>
+              <a href="/account" rel="noreferrer">
+                account
+              </a>
+            </NavItem>
+            <NavItem>
+              <a href="/contact" rel="noreferrer">
+                contact
+              </a>
+            </NavItem>
+          </ul>
+        </nav>
         <Bottom>
           <span
             data-scroll
@@ -168,14 +203,7 @@ const Footer = () => {
             data-scroll-speed="-2"
             data-scroll-direction="horizontal"
           >
-            Made with &hearts; by &nbsp;
-            <a
-              href="https://youtube.com/codebucks"
-              target="_blank"
-              rel="noreferrer"
-            >
-              CodeBucks
-            </a>
+            MindFlow - Your personal wellness companion
           </span>
         </Bottom>
       </FooterComponent>

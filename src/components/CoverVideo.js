@@ -140,7 +140,7 @@ const CoverVideo = () => {
           data-scroll-delay="0.04"
           data-scroll-speed="2"
         >
-          Inspire. Create. Belive
+          Manage.Balance.Breath
         </motion.h2>
       </Title>
       <video src={MainVideo} type="video/mp4" autoPlay muted loop />

@@ -20,6 +20,7 @@ const Section = styled.section`
     width: 100vw;
   }
 `;
+
 const Title = styled.h1`
   font-size: ${(props) => props.theme.fontBig};
   font-family: "Kaushan Script";
@@ -39,6 +40,7 @@ const Title = styled.h1`
     font-size: ${(props) => props.theme.fontxxxl};
   }
 `;
+
 const Left = styled.div`
   width: 50%;
   font-size: ${(props) => props.theme.fontlg};
@@ -71,6 +73,7 @@ const Left = styled.div`
     width: 70%;
   }
 `;
+
 const Right = styled.div`
   width: 50%;
   position: relative;
@@ -127,20 +130,13 @@ const About = () => {
         About Us
       </Title>
       <Left data-scroll data-scroll-sticky data-scroll-target="#fixed-target">
-        We're fashion studio based in california. We create unique designs that
-        will blow your mind. We also design unique jewellary pieces. Fashion is
-        an ART that can not be grasped by everyone.
+        MindFlow is a wellness-focused web application that helps users manage their stress levels. We believe in promoting healthy coping strategies and mental well-being through personalized recommendations.
         <br />
         <br />
-        We are very dedicated to making our products. We offer unique and
-        creative products to a wide range of people. We have a variety of
-        styles, but for most people, all of the options are in the box. We
-        specialize in making things that make you happy.
+        Our app allows users to input their current stress level and, based on this input, recommends tailored breathing exercises and physical activities designed to help reduce stress and improve overall mental wellness.
         <br />
         <br />
-        We strive to build on our vision. As a fashion label, we do our best to
-        create amazing experiences for all people. We are always looking to make
-        something that is easy for everyone.
+        We strive to build an accessible, user-friendly tool that provides practical support for everyday stress management. Our goal is to help you find your balance and create moments of calm in your busy life.
       </Left>
       <Right>
         <img src={img1} alt="About Us" />
