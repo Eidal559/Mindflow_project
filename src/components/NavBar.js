@@ -83,6 +83,8 @@ const MenuItem = styled(motion.li)`
 
 const NavBar = () => {
   const [click, setClick] = useState(false);
+  // Add this line to track login state locally for now
+  const [loggedIn] = useState(false);
   
   const { scroll } = useLocomotiveScroll();
   
@@ -147,6 +149,14 @@ const NavBar = () => {
           whileTap={{ scale: 0.9, Y: 0 }}
         >
           Stress Tool
+        </MenuItem>
+        {/* Add the login/profile menu item */}
+        <MenuItem
+          onClick={() => handleScroll(loggedIn ? "#profile" : "#auth")}
+          whileHover={{ scale: 1.1, y: -5 }}
+          whileTap={{ scale: 0.9, Y: 0 }}
+        >
+          {loggedIn ? "Profile" : "Log In"}
         </MenuItem>
       </MenuItems>
     </NavContainer>

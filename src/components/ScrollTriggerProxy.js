@@ -15,7 +15,7 @@ const ScrollTriggerProxy = () => {
     if (scroll) {
       const element = scroll?.el; // locomotive scrolling element, in our case it's app (main)
 
-      scroll.on("scroll", ScrollTrigger.update); // on scroll of locomotive, update scrolltrigger
+      scroll.on("scroll", ScrollTrigger.update, { throttle: 100 });
 
       //  let's use scroller proxy
       ScrollTrigger.scrollerProxy(element, {
