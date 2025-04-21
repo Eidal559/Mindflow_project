@@ -1,7 +1,8 @@
 // src/sections/UserProfile.js
-import React from "react";
+import React, { useContext } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
+import { AuthContext } from "../context/AuthContext";
 
 const Section = styled.section`
   min-height: 100vh;
@@ -105,18 +106,28 @@ const StatCard = styled(motion.div)`
   }
 `;
 
+const LogoutButton = styled.button`
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: ${(props) => props.theme.fontmd};
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-3px);
+  }
+`;
+
 const UserProfile = () => {
-  // Mock user data
-  const user = {
-    name: "Sarah Johnson",
-    email: "sarah@example.com",
-    joinDate: "April 2023",
-    stats: {
-      sessionsCompleted: 27,
-      averageStressLevel: 5.4,
-      streakDays: 8
-    }
-  };
+  const { user, logout } = useContext(AuthContext);
+
+  if (!user) {
+    return null; // Don't render if no user
+  }
 
   return (
     <Section id="profile">
@@ -163,18 +174,9 @@ const UserProfile = () => {
         </StatsContainer>
         
         <div style={{ textAlign: "center", marginTop: "2rem" }}>
-          <button 
-            style={{ 
-              background: "transparent", 
-              border: "1px solid white", 
-              color: "white", 
-              padding: "0.75rem 1.5rem", 
-              borderRadius: "30px",
-              cursor: "pointer"
-            }}
-          >
+          <LogoutButton onClick={logout}>
             Log Out
-          </button>
+          </LogoutButton>
         </div>
       </ProfileContainer>
     </Section>

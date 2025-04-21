@@ -1,8 +1,10 @@
 // src/sections/Authentication.js
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import styled from "styled-components";
 import Login from "../components/Authentication/Login";
 import Register from "../components/Authentication/Register";
+import { AuthContext } from "../context/AuthContext";
+import { useLocomotiveScroll } from "react-locomotive-scroll";
 
 const Section = styled.section`
   min-height: 100vh;
@@ -48,9 +50,43 @@ const Title = styled.h1`
 
 const Authentication = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const { login, register } = useContext(AuthContext);
+  const { scroll } = useLocomotiveScroll();
   
   const toggleForm = () => {
     setIsLogin(!isLogin);
+  };
+  
+  const handleLogin = (userData) => {
+    // Use the context login function
+    const success = login(userData);
+    if (success && scroll) {
+      // If login successful, scroll to profile section
+      const profileSection = document.querySelector("#profile");
+      if (profileSection) {
+        scroll.scrollTo(profileSection, {
+          offset: "-100",
+          duration: "2000",
+          easing: [0.25, 0.0, 0.35, 1.0],
+        });
+      }
+    }
+  };
+  
+  const handleRegister = (userData) => {
+    // Use the context register function
+    const success = register(userData);
+    if (success && scroll) {
+      // If registration successful, scroll to profile section
+      const profileSection = document.querySelector("#profile");
+      if (profileSection) {
+        scroll.scrollTo(profileSection, {
+          offset: "-100",
+          duration: "2000",
+          easing: [0.25, 0.0, 0.35, 1.0],
+        });
+      }
+    }
   };
   
   return (
@@ -61,9 +97,15 @@ const Authentication = () => {
         </Title>
         
         {isLogin ? (
-          <Login toggleForm={toggleForm} />
+          <Login 
+            toggleForm={toggleForm}
+            onLogin={handleLogin}
+          />
         ) : (
-          <Register toggleForm={toggleForm} />
+          <Register 
+            toggleForm={toggleForm}
+            onRegister={handleRegister}
+          />
         )}
       </Container>
     </Section>
