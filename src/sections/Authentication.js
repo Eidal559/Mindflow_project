@@ -1,10 +1,10 @@
 // src/sections/Authentication.js
 import React, { useState, useContext } from "react";
 import styled from "styled-components";
-import Login from "../components/Authentication/Login";
+// Fix the imports to match your actual file structure
+import Login from "../components/Authentication/Login";  
 import Register from "../components/Authentication/Register";
 import { AuthContext } from "../context/AuthContext";
-import { useLocomotiveScroll } from "react-locomotive-scroll";
 
 const Section = styled.section`
   min-height: 100vh;
@@ -48,4 +48,37 @@ const Title = styled.h1`
   }
 `;
 
-// In src/sections/Authentication.js
+const Authentication = () => {
+  const [isLogin, setIsLogin] = useState(true);
+  const { login, register } = useContext(AuthContext);
+
+  const toggleForm = () => {
+    setIsLogin(!isLogin);
+  };
+
+  const handleLogin = (formData) => {
+    login(formData);
+  };
+
+  const handleRegister = (formData) => {
+    register(formData);
+  };
+
+  return (
+    <Section id="auth">
+      <Container>
+        <Title>
+          {isLogin ? "Welcome Back" : "Join MindFlow"}
+        </Title>
+        
+        {isLogin ? (
+          <Login toggleForm={toggleForm} onLogin={handleLogin} />
+        ) : (
+          <Register toggleForm={toggleForm} onRegister={handleRegister} />
+        )}
+      </Container>
+    </Section>
+  );
+};
+
+export default Authentication;

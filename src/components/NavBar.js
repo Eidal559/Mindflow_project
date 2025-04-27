@@ -1,7 +1,7 @@
+// src/components/NavBar.js
 import React, { useState, useContext } from "react"; 
 import styled from "styled-components"; 
 import { motion } from "framer-motion"; 
-import { useLocomotiveScroll } from "react-locomotive-scroll";
 import { AuthContext } from "../context/AuthContext";
 
 const NavContainer = styled(motion.div)`
@@ -87,16 +87,12 @@ const NavBar = () => {
   // Use the actual auth context instead of a local state
   const { isLoggedIn } = useContext(AuthContext);
   
-  const { scroll } = useLocomotiveScroll();
-  
   const handleScroll = (id) => {
     let elem = document.querySelector(id);
+    if (elem) {
+      elem.scrollIntoView({ behavior: 'smooth' });
+    }
     setClick(!click);
-    scroll.scrollTo(elem, {
-      offset: "-100",
-      duration: "2000",
-      easing: [0.25, 0.0, 0.35, 1.0],
-    });
   };
   
   return (
@@ -110,7 +106,7 @@ const NavBar = () => {
       }}
       transition={{
         duration: 2,
-        delay: 5,
+        delay: 2,
       }}
     >
       <MenuItems

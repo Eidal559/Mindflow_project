@@ -1,8 +1,8 @@
+// src/sections/Footer.js
 import React from "react";
 import styled from "styled-components";
 import Logo from "../assets/Svgs/mindflow.svg";
 import { motion } from "framer-motion";
-import { useLocomotiveScroll } from "react-locomotive-scroll";
 
 const Section = styled.section`
   min-height: 100vh;
@@ -97,10 +97,6 @@ const Bottom = styled.div`
     justify-content: center;
     width: 100%;
     margin: 0;
-    
-    span {
-      transform: none !important;
-    }
   }
 
   @media (max-width: 48em) {
@@ -113,16 +109,12 @@ const NavItem = styled.li`
 `;
 
 const Footer = () => {
-  const { scroll } = useLocomotiveScroll();
-
   const handleScroll = (id) => {
     let elem = document.querySelector(id);
     
     if (elem) {
-      scroll.scrollTo(elem, {
-        offset: "-100",
-        duration: "2000",
-        easing: [0.25, 0.0, 0.35, 1.0],
+      elem.scrollIntoView({
+        behavior: 'smooth'
       });
     }
   };
@@ -130,10 +122,8 @@ const Footer = () => {
   return (
     <Section>
       <LogoContainer>
-        <img data-scroll data-scroll-speed="2" src={Logo} alt="MindFlow" />
-        <h3 data-scroll data-scroll-speed="-1">
-          MindFlow
-        </h3>
+        <img src={Logo} alt="MindFlow" />
+        <h3>MindFlow</h3>
       </LogoContainer>
 
       <FooterComponent
@@ -179,30 +169,22 @@ const Footer = () => {
               stress tool
             </NavItem>
             <NavItem>
-              <a href="/account" rel="noreferrer">
+              <a href="#auth" onClick={() => handleScroll("#auth")}>
                 account
               </a>
             </NavItem>
             <NavItem>
-              <a href="/contact" rel="noreferrer">
+              <a href="#contact" onClick={() => handleScroll("#contact")}>
                 contact
               </a>
             </NavItem>
           </ul>
         </nav>
         <Bottom>
-          <span
-            data-scroll
-            data-scroll-speed="2"
-            data-scroll-direction="horizontal"
-          >
+          <span>
             &copy; {new Date().getFullYear()}. All Rights Reserved.
           </span>
-          <span
-            data-scroll
-            data-scroll-speed="-2"
-            data-scroll-direction="horizontal"
-          >
+          <span>
             MindFlow - Your personal wellness companion
           </span>
         </Bottom>
