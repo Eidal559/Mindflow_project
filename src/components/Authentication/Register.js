@@ -76,7 +76,7 @@ const ToggleText = styled.p`
   }
 `;
 
-const Register = ({ toggleForm }) => {
+const Register = ({ toggleForm, onRegister }) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -98,8 +98,12 @@ const Register = ({ toggleForm }) => {
       alert("Passwords don't match");
       return;
     }
-    // Handle registration logic here
-    console.log("Registration data:", formData);
+    // Use the onRegister prop function if provided
+    if (onRegister) {
+      onRegister(formData);
+    } else {
+      console.log("Registration data:", formData);
+    }
   };
 
   return (

@@ -1,7 +1,8 @@
-import React, { useState } from "react"; 
+import React, { useState, useContext } from "react"; 
 import styled from "styled-components"; 
 import { motion } from "framer-motion"; 
-import { useLocomotiveScroll } from "react-locomotive-scroll";  
+import { useLocomotiveScroll } from "react-locomotive-scroll";
+import { AuthContext } from "../context/AuthContext";
 
 const NavContainer = styled(motion.div)`
   width: 100vw;
@@ -83,8 +84,8 @@ const MenuItem = styled(motion.li)`
 
 const NavBar = () => {
   const [click, setClick] = useState(false);
-  // Add this line to track login state locally for now
-  const [loggedIn] = useState(false);
+  // Use the actual auth context instead of a local state
+  const { isLoggedIn } = useContext(AuthContext);
   
   const { scroll } = useLocomotiveScroll();
   
@@ -152,11 +153,11 @@ const NavBar = () => {
         </MenuItem>
         {/* Add the login/profile menu item */}
         <MenuItem
-          onClick={() => handleScroll(loggedIn ? "#profile" : "#auth")}
+          onClick={() => handleScroll(isLoggedIn ? "#profile" : "#auth")}
           whileHover={{ scale: 1.1, y: -5 }}
           whileTap={{ scale: 0.9, Y: 0 }}
         >
-          {loggedIn ? "Profile" : "Log In"}
+          {isLoggedIn ? "Profile" : "Log In"}
         </MenuItem>
       </MenuItems>
     </NavContainer>

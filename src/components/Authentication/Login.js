@@ -73,7 +73,7 @@ const ToggleText = styled.p`
   }
 `;
 
-const Login = ({ toggleForm }) => {
+const Login = ({ toggleForm, onLogin }) => {
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -88,8 +88,12 @@ const Login = ({ toggleForm }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login data:", formData);
+    // Use the onLogin prop function if provided
+    if (onLogin) {
+      onLogin(formData);
+    } else {
+      console.log("Login data:", formData);
+    }
   };
 
   return (

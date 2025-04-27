@@ -1,9 +1,9 @@
-// src/App.js - simplified version
+// src/App.js
 import { ThemeProvider } from "styled-components";
 import GlobalStyles from "./styles/GlobalStyles";
 import { dark } from "./styles/Themes";
 import { LocomotiveScrollProvider } from "react-locomotive-scroll";
-import { useRef, useState } from "react";
+import { useRef, useState, useContext } from "react";
 import 'locomotive-scroll/dist/locomotive-scroll.css'
 
 import Home from "./sections/Home";
@@ -16,43 +16,51 @@ import StressInputForm from "./components/StressInputForm";
 import BreathingExercises from "./sections/BreathingExercises";
 
 
-function App() {
+// Create a content component that uses the auth context
+function AppContent() {
   const containerRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
+  const { isLoggedIn } = useContext(AuthContext);
 
   // Set up a timeout to show the loader for 3 seconds
-  setTimeout(() => {
-    setLoaded(true);
-  }, 3000);
+  // eslint-disable-next-line no-undef
+  useEffect(() => {
+    setTimeout(() => {
+      setLoaded(true);
+    }, 3000);
+  }, []);
 
   return (
     <>
       <GlobalStyles />
-
       <ThemeProvider theme={dark}>
         <LocomotiveScrollProvider
           options={{
             smooth: true,
+            lerp: 0.1, // Smoother scrolling
+            multiplier: 0.5, // Slower scroll speed
             smartphone:{
               smooth: true,
+              lerp: 0.1,
             },
             tablet:{
               smooth: true,
+              lerp: 0.1,
             }
           }}
-          watch={[]}
+          watch={[isLoggedIn]} // Watch auth state for content changes
           containerRef={containerRef}
         >
           <AnimatePresence>
             {loaded ? null : <Loader />}
           </AnimatePresence>
           <ScrollTriggerProxy />
-          {/* <ScrollBehavior /> */}
+          <ScrollBehavior />
           <AnimatePresence>
             <main className='App' data-scroll-container ref={containerRef}>
               <Home />
               <About />
-              {/* {isLoggedIn ? <UserProfile /> : <Authentication />} */}
+              {isLoggedIn ? <UserProfile /> : <Authentication />}
               <StressInputForm />
               <BreathingExercises />
               <Footer />
@@ -61,6 +69,15 @@ function App() {
         </LocomotiveScrollProvider>
       </ThemeProvider>
     </>
+  );
+}
+
+// Wrap the content with the auth provider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
