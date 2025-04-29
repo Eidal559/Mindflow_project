@@ -1,8 +1,8 @@
-// src/components/NavBar.js
-import React, { useState, useContext } from "react"; 
+import React, { useState } from "react"; 
 import styled from "styled-components"; 
 import { motion } from "framer-motion"; 
-import { AuthContext } from "../context/AuthContext";
+import { useLocomotiveScroll } from "react-locomotive-scroll";
+import { useAuth } from "../context/AuthContext"; // Import our custom hook
 
 const NavContainer = styled(motion.div)`
   width: 100vw;
@@ -84,15 +84,18 @@ const MenuItem = styled(motion.li)`
 
 const NavBar = () => {
   const [click, setClick] = useState(false);
-  // Use the actual auth context instead of a local state
-  const { isLoggedIn } = useContext(AuthContext);
+  const { isLoggedIn, logout } = useAuth(); // Use our auth context
+  
+  const { scroll } = useLocomotiveScroll();
   
   const handleScroll = (id) => {
     let elem = document.querySelector(id);
-    if (elem) {
-      elem.scrollIntoView({ behavior: 'smooth' });
-    }
     setClick(!click);
+    scroll.scrollTo(elem, {
+      offset: "-100",
+      duration: "2000",
+      easing: [0.25, 0.0, 0.35, 1.0],
+    });
   };
   
   return (
@@ -106,7 +109,7 @@ const NavBar = () => {
       }}
       transition={{
         duration: 2,
-        delay: 2,
+        delay: 5,
       }}
     >
       <MenuItems
@@ -147,14 +150,15 @@ const NavBar = () => {
         >
           Stress Tool
         </MenuItem>
-        {/* Add the login/profile menu item */}
-        <MenuItem
-          onClick={() => handleScroll(isLoggedIn ? "#profile" : "#auth")}
-          whileHover={{ scale: 1.1, y: -5 }}
-          whileTap={{ scale: 0.9, Y: 0 }}
-        >
-          {isLoggedIn ? "Profile" : "Log In"}
-        </MenuItem>
+        {isLoggedIn && (
+          <MenuItem
+            onClick={logout}
+            whileHover={{ scale: 1.1, y: -5 }}
+            whileTap={{ scale: 0.9, Y: 0 }}
+          >
+            Logout
+          </MenuItem>
+        )}
       </MenuItems>
     </NavContainer>
   );
