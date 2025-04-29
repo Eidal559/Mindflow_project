@@ -1,64 +1,47 @@
+// src/App.js
+import React, { useState, useEffect } from "react";
+import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "styled-components";
-import GlobalStyles from "./styles/GlobalStyles";
 import { dark } from "./styles/Themes";
-import { LocomotiveScrollProvider } from "react-locomotive-scroll";
-import { useEffect, useRef, useState } from "react";
-import 'locomotive-scroll/dist/locomotive-scroll.css'
-
-import Home from "./sections/Home";
-import { AnimatePresence } from "framer-motion";
-import About from "./sections/About";
-import ScrollTriggerProxy from './components/ScrollTriggerProxy';
-import Footer from './sections/Footer';
+import GlobalStyles from "./styles/GlobalStyles";
+import { AuthProvider } from "./context/AuthContext";
 import Loader from "./components/Loader";
-import StressInputForm from "./components/StressInputForm";
+import { AnimatePresence } from "framer-motion";
+import Home from "./sections/Home";
+import About from "./sections/About";
 import BreathingExercises from "./sections/BreathingExercises";
-import { AuthProvider } from "./context/AuthContext"; // Import the AuthProvider
+import StressInputForm from "./components/StressInputForm";
+import Footer from "./sections/Footer";
 
 function App() {
-  const containerRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     setTimeout(() => {
       setLoaded(true);
     }, 3000);
-  }, [])
+  }, []);
 
   return (
     <>
       <GlobalStyles />
-
       <ThemeProvider theme={dark}>
-        {/* Wrap everything with the AuthProvider */}
         <AuthProvider>
-          <LocomotiveScrollProvider
-            options={{
-              smooth: true,
-              smartphone:{
-                smooth:true,
-              },
-              tablet:{
-                smooth:true,
-              }
-            }}
-            watch={[]}
-            containerRef={containerRef}
-          >
+          <BrowserRouter>
             <AnimatePresence>
               {loaded ? null : <Loader />}
             </AnimatePresence>
-            <ScrollTriggerProxy />
-            <AnimatePresence>
-              <main className='App' data-scroll-container ref={containerRef}>
+            
+            {loaded && (
+              <main className="App">
                 <Home />
                 <About />
                 <StressInputForm />
                 <BreathingExercises />
                 <Footer />
               </main>
-            </AnimatePresence>
-          </LocomotiveScrollProvider>
+            )}
+          </BrowserRouter>
         </AuthProvider>
       </ThemeProvider>
     </>

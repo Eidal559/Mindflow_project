@@ -1,12 +1,19 @@
+// src/components/CoverVideo.js
 import React from "react";
 import styled from "styled-components";
-import MainVideo from "../assets/sunset.mp4";
 import { motion } from "framer-motion";
 
+// Fallback background if video is missing
 const VideoContainer = styled.section`
   width: 100%;
   height: 100vh;
   position: relative;
+  background-color: ${props => props.theme.body};
+  background-image: linear-gradient(
+    45deg,
+    ${props => props.theme.body} 0%,
+    ${props => props.theme.accent} 100%
+  );
 
   video {
     width: 100%;
@@ -17,10 +24,12 @@ const VideoContainer = styled.section`
       object-position: center 10%;
     }
   }
+  
   @media (max-width: 30em) {
     object-position: center 50%;
   }
 `;
+
 const DarkOverlay = styled.div`
   position: absolute;
   top: 0;
@@ -28,9 +37,9 @@ const DarkOverlay = styled.div`
   left: 0;
   right: 0;
   z-index: 1;
-
   background-color: ${(props) => `rgba(${props.theme.bodyRgba},0.6)`};
 `;
+
 const Title = styled(motion.div)`
   position: absolute;
   top: 0;
@@ -59,6 +68,7 @@ const Title = styled(motion.div)`
       font-size: calc(5rem + 8vw);
     }
   }
+  
   h2 {
     font-family: "Sirin Stencil";
     font-size: ${(props) => props.theme.fontlg};
@@ -79,13 +89,13 @@ const container = {
   },
   show: {
     opacity: 1,
-
     transition: {
-      delayChildren: 5, // 2
+      delayChildren: 2,
       staggerChildren: 0.3,
     },
   },
 };
+
 const item = {
   hidden: {
     opacity: 0,
@@ -143,7 +153,17 @@ const CoverVideo = () => {
           Manage.Balance.Breath
         </motion.h2>
       </Title>
-      <video src={MainVideo} type="video/mp4" autoPlay muted loop />
+      {/* Try to load the video, but the component still works without it */}
+      <video 
+        autoPlay 
+        muted 
+        loop
+        playsInline
+        poster="#"
+        onError={(e) => e.target.style.display = 'none'}
+      >
+        <source src="/assets/sunset.mp4" type="video/mp4" />
+      </video>
     </VideoContainer>
   );
 };
