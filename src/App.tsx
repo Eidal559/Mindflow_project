@@ -1,14 +1,16 @@
-
+// src/App.tsx
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import AppPage from "./pages/App";
+import DashboardLayout from "./components/layout/DashboardLayout";
+import Dashboard from "./pages/Dashboard";
+import StressTracker from "./pages/StressTracker";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -24,8 +26,17 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/app" element={<AppPage />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              
+              {/* Dashboard Routes */}
+              <Route path="/app" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
+              <Route path="/app/stress" element={<DashboardLayout><StressTracker /></DashboardLayout>} />
+              
+              {/* Add more app routes here */}
+              <Route path="/app/breathing" element={<DashboardLayout><div className="p-6 text-center">Breathing Exercises Coming Soon</div></DashboardLayout>} />
+              <Route path="/app/meditation" element={<DashboardLayout><div className="p-6 text-center">Meditation Coming Soon</div></DashboardLayout>} />
+              <Route path="/app/journal" element={<DashboardLayout><div className="p-6 text-center">Journal Coming Soon</div></DashboardLayout>} />
+              
+              {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
