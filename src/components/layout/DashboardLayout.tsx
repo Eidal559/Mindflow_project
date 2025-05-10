@@ -39,6 +39,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: 'Breathing Exercises', icon: <Wind className="h-5 w-5" />, path: '/app/breathing' },
     { name: 'Meditation', icon: <Brain className="h-5 w-5" />, path: '/app/meditation' },
     { name: 'Journal', icon: <BookOpen className="h-5 w-5" />, path: '/app/journal' },
+    { name: 'Learn About Stress', icon: <BookOpen className="h-5 w-5" />, path: '/app/stress-education' },
   ];
   
   return (
