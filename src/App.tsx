@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import StressTracker from "./pages/StressTracker";
+import StressEducation from '@/pages/StressEducation';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -30,6 +31,9 @@ const App: React.FC = () => {
               {/* Dashboard Routes */}
               <Route path="/app" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
               <Route path="/app/stress" element={<DashboardLayout><StressTracker /></DashboardLayout>} />
+              
+              {/* Add the stress education route here */}
+              <Route path="/app/stress-education" element={<DashboardLayout><StressEducation /></DashboardLayout>} />
               
               {/* Add more app routes here */}
               <Route path="/app/breathing" element={<DashboardLayout><div className="p-6 text-center">Breathing Exercises Coming Soon</div></DashboardLayout>} />
