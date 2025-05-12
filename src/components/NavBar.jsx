@@ -1,167 +1,208 @@
-import React, { useState, useContext } from "react"; 
-import styled from "styled-components"; 
-import { motion } from "framer-motion"; 
+// src/components/Navbar.jsx
+import React, { useState, useContext } from "react";
+import styled, { ThemeProvider } from "styled-components";
+import { motion } from "framer-motion";
 import { useLocomotiveScroll } from "react-locomotive-scroll";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "./context/AuthContext";
 
-const NavContainer = styled(motion.div)`
-  width: 100vw;
-  z-index: 6;
-  position: absolute;
-  top: ${(props) => (props.click ? "0" : `-${props.theme.navHeight}`)};
-  
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  
-  transition: all 0.3s ease;
-  
-  @media (max-width: 40em) {
-    top: ${(props) => (props.click ? "0" : `calc(-50vh - 4rem)`)};
-  }
-`; 
+// Define a theme
+const theme = {
+  body: "#FFFFFF",
+  text: "#202020",
+  bodyRgba: "255, 255, 255",
+  textRgba: "32, 32, 32",
+  fontmd: "1rem",
+  navHeight: "5rem"
+};
 
-const MenuItems = styled(motion.ul)`
-  position: relative;
-  height: ${(props) => props.theme.navHeight};
-  background-color: ${(props) => props.theme.body};
-  color: ${(props) => props.theme.text};
-  list-style: none;
-  
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  
+const NavContainer = styled.nav`
   width: 100%;
-  padding: 0 10rem;
-  
-  @media (max-width: 40em) {
-    flex-direction: column;
-    padding: 2rem 0;
-    height: 50vh;
-  }
-`;  
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  background-color: ${props => props.theme.body};
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+`;
 
-const MenuBtn = styled.li`
-  background-color: ${(props) => `rgba(${props.theme.textRgba}, 0.7)`};
-  list-style-type: style none;
-  color: ${(props) => props.theme.body};
-  width: 15rem;
-  height: 2.5rem;
-  
-  clip-path: polygon(0 0, 100% 0, 80% 100%, 20% 100%);
-  
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  
+const NavContent = styled.div`
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  
-  font-size: ${(props) => props.theme.fontmd};
+  padding: 0.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+`;
+
+const Logo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const LogoImg = styled.img`
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 50%;
+  padding: 0.2rem;
+  background: white;
+  border: 2px solid rgba(139, 92, 246, 0.2);
+`;
+
+const LogoText = styled.span`
   font-weight: 600;
-  text-transform: uppercase;
-  
-  cursor: pointer;
-  
-  @media (max-width: 40em) {
-    width: 10rem;
-    height: 2rem;
+  font-size: 1.25rem;
+  color: ${props => props.theme.text};
+`;
+
+const MenuItems = styled.ul`
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+  margin: 0;
+
+  @media (max-width: 768px) {
+    display: none;
   }
-`; 
+`;
 
 const MenuItem = styled(motion.li)`
   text-transform: uppercase;
-  color: ${(props) => props.theme.text};
+  color: ${props => props.theme.text};
+  font-size: 0.9rem;
+  letter-spacing: 0.05rem;
   cursor: pointer;
-  @media (max-width: 40em) {
-    flex-direction: column;
-    padding: 0.5rem 0;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const Button = styled.button`
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &.outline {
+    background: transparent;
+    border: 1px solid #E2E8F0;
+    color: ${props => props.theme.text};
+    
+    &:hover {
+      background: #F7FAFC;
+    }
   }
-`;  
+  
+  &.primary {
+    background: #8B5CF6;
+    border: none;
+    color: white;
+    
+    &:hover {
+      background: #7C3AED;
+    }
+  }
+`;
 
 const NavBar = () => {
   const [click, setClick] = useState(false);
-  // Use the actual auth context instead of a local state
   const { isLoggedIn } = useContext(AuthContext);
   
   const { scroll } = useLocomotiveScroll();
   
   const handleScroll = (id) => {
     let elem = document.querySelector(id);
-    setClick(!click);
-    scroll.scrollTo(elem, {
-      offset: "-100",
-      duration: "2000",
-      easing: [0.25, 0.0, 0.35, 1.0],
-    });
+    if (elem) {
+      scroll.scrollTo(elem, {
+        offset: "-100",
+        duration: "2000",
+        easing: [0.25, 0.0, 0.35, 1.0],
+      });
+    }
   };
   
   return (
-    <NavContainer
-      click={+click}
-      initial={{
-        y: "-100%",
-      }}
-      animate={{
-        y: 0,
-      }}
-      transition={{
-        duration: 2,
-        delay: 5,
-      }}
-    >
-      <MenuItems
-        drag="y"
-        dragConstraints={{
-          top: 0,
-          bottom: 70,
-        }}
-        dragElastic={0.05}
-        dragSnapToOrigin
-      >
-        <MenuBtn onClick={() => setClick(!click)}>Menu</MenuBtn>
-        <MenuItem
-          onClick={() => handleScroll("#home")}
-          whileHover={{ scale: 1.1, y: -5 }}
-          whileTap={{ scale: 0.9, Y: 0 }}
-        >
-          Home
-        </MenuItem>
-        <MenuItem
-          onClick={() => handleScroll(".about")}
-          whileHover={{ scale: 1.1, y: -5 }}
-          whileTap={{ scale: 0.9, Y: 0 }}
-        >
-          About
-        </MenuItem>
-        <MenuItem
-          onClick={() => handleScroll("#exercises")}
-          whileHover={{ scale: 1.1, y: -5 }}
-          whileTap={{ scale: 0.9, Y: 0 }}
-        >
-          Exercises
-        </MenuItem>
-        <MenuItem
-          onClick={() => handleScroll("#stress-tool")}
-          whileHover={{ scale: 1.1, y: -5 }}
-          whileTap={{ scale: 0.9, Y: 0 }}
-        >
-          Stress Tool
-        </MenuItem>
-        {/* Add the login/profile menu item */}
-        <MenuItem
-          onClick={() => handleScroll(isLoggedIn ? "#profile" : "#auth")}
-          whileHover={{ scale: 1.1, y: -5 }}
-          whileTap={{ scale: 0.9, Y: 0 }}
-        >
-          {isLoggedIn ? "Profile" : "Log In"}
-        </MenuItem>
-      </MenuItems>
-    </NavContainer>
+    <ThemeProvider theme={theme}>
+      <NavContainer>
+        <NavContent>
+          <Logo>
+            <LogoImg 
+              src="/lovable-uploads/4546c2ea-9a15-40c9-a1ec-f046c06e8245.png" 
+              alt="Mindflow Logo" 
+            />
+            <LogoText>Mindflow</LogoText>
+          </Logo>
+          
+          <MenuItems>
+            <MenuItem
+              onClick={() => handleScroll("#features")}
+              whileHover={{ scale: 1.1, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Features
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleScroll("#testimonials")}
+              whileHover={{ scale: 1.1, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Testimonials
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleScroll("#about")}
+              whileHover={{ scale: 1.1, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              About
+            </MenuItem>
+          </MenuItems>
+          
+          <ButtonContainer>
+            {isLoggedIn ? (
+              <>
+                <Button 
+                  className="outline"
+                  onClick={() => window.location.href = '/app'}
+                >
+                  Dashboard
+                </Button>
+                <Button 
+                  className="outline"
+                  onClick={() => {
+                    // Call logout from context
+                    logout();
+                    window.location.href = '/';
+                  }}
+                >
+                  Log Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  className="outline"
+                  onClick={() => window.location.href = '/auth'}
+                >
+                  Log In
+                </Button>
+                <Button 
+                  className="primary"
+                  onClick={() => window.location.href = '/auth?signup=true'}
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
+          </ButtonContainer>
+        </NavContent>
+      </NavContainer>
+    </ThemeProvider>
   );
-};  
+};
 
 export default NavBar;
