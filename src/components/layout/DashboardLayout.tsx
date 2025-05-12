@@ -12,6 +12,7 @@ import {
   X,
   User,
   LogOut,
+  Music
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -39,7 +40,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: 'Stress Tracking', icon: <BarChart2 className="h-5 w-5" />, path: '/app/stress' },
     { name: 'Breathing Exercises', icon: <Wind className="h-5 w-5" />, path: '/app/breathing' },
     { name: 'Meditation', icon: <Brain className="h-5 w-5" />, path: '/app/meditation' },
-    { name: 'Journal', icon: <BookOpen className="h-5 w-5" />, path: '/app/journal' },
+    { name: 'Relaxation Music', icon: <Music className="h-5 w-5" />, path: '/app/music' }, // Changed from Journal to Relaxation Music
   ];
   
   return (
