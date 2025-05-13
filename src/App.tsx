@@ -38,7 +38,7 @@ const App: React.FC = () => {
               {/* Add more app routes here */}
               <Route path="/app/breathing" element={<DashboardLayout><div className="p-6 text-center">Breathing Exercises Coming Soon</div></DashboardLayout>} />
               <Route path="/app/meditation" element={<DashboardLayout><div className="p-6 text-center">Meditation Coming Soon</div></DashboardLayout>} />
-              <Route path="/app/journal" element={<DashboardLayout><div className="p-6 text-center">Journal Coming Soon</div></DashboardLayout>} />
+              <Route path="/app/music" element={<DashboardLayout><div className="p-6 text-center">Music Coming Soon</div></DashboardLayout>} />
               
               {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />
