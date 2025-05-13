@@ -15,7 +15,11 @@ const Dashboard = () => {
   const avgStressLevel = getOverallAverageStress() || 0;
   const lastLoggedDate = getLastCheckInTime() || 'Never';
   const upcomingReminder = "Breathing exercise at 5:00 PM"; // You could implement a reminder system later
-  
+  const handleQuickBreathingStart = () => {
+    // Navigate to breathing exercises page with a query parameter
+    navigate('/app/breathing?exercise=4-7-8-breathing');
+  };
+
   return (
     <div className="space-y-6">
       {/* Welcome section */}
@@ -109,7 +113,10 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button variant="outline" className="w-full">
+            <Button 
+              onClick={handleQuickBreathingStart} 
+              className="w-full bg-primary hover:bg-primary/90"
+            >
               Start <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardFooter>

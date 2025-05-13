@@ -1,4 +1,4 @@
-// src/App.tsx
+// src/App.tsx - Modified version to use our new BreathingExercises component
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,6 +12,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import StressTracker from "./pages/StressTracker";
 import StressEducation from '@/pages/StressEducation';
+import BreathingExercises from './pages/BreathingExercises'; // Import the new BreathingExercises page
 
 // Create a client
 const queryClient = new QueryClient();
@@ -32,11 +33,13 @@ const App: React.FC = () => {
               <Route path="/app" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
               <Route path="/app/stress" element={<DashboardLayout><StressTracker /></DashboardLayout>} />
               
-              {/* Add the stress education route here */}
+              {/* Stress education route */}
               <Route path="/app/stress-education" element={<DashboardLayout><StressEducation /></DashboardLayout>} />
               
-              {/* Add more app routes here */}
-              <Route path="/app/breathing" element={<DashboardLayout><div className="p-6 text-center">Breathing Exercises Coming Soon</div></DashboardLayout>} />
+              {/* Replace the placeholder with our new BreathingExercises component */}
+              <Route path="/app/breathing" element={<DashboardLayout><BreathingExercises /></DashboardLayout>} />
+              
+              {/* Other app routes */}
               <Route path="/app/meditation" element={<DashboardLayout><div className="p-6 text-center">Meditation Coming Soon</div></DashboardLayout>} />
               <Route path="/app/music" element={<DashboardLayout><div className="p-6 text-center">Music Coming Soon</div></DashboardLayout>} />
               
