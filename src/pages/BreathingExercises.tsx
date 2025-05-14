@@ -1,13 +1,16 @@
 // src/pages/BreathingExercises.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Wind, Play, Clock, Calendar, Heart, Brain, Info, Award, Check } from 'lucide-react';
 import BreathingHistory from '../components/breathing/BreathingHistory';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { addBreathingSession, updateBreathingSession } from '@/lib/breathing-storage';
+
+
 
 // Define breathing exercise type
 interface BreathingExercise {
@@ -33,7 +36,7 @@ const breathingExercises: BreathingExercise[] = [
     level: "Beginner",
     category: "Relaxation",
     thumbnail: "/images/breathing/box-breathing.jpg",
-    videoSrc: "https://example.com/box-breathing.mp4",
+    videoSrc: "/videos/breathing/box-breathing.mp4",
     benefits: [
       "Reduces stress and anxiety",
       "Improves concentration",
@@ -57,7 +60,7 @@ const breathingExercises: BreathingExercise[] = [
     level: "Beginner",
     category: "Sleep",
     thumbnail: "/images/breathing/4-7-8-breathing.jpg",
-    videoSrc: "https://example.com/4-7-8-breathing.mp4",
+    videoSrc: "/videos/breathing/4-7-8-breathing.mp4",
     benefits: [
       "Helps you fall asleep faster",
       "Reduces anxiety",
@@ -82,7 +85,7 @@ const breathingExercises: BreathingExercise[] = [
     level: "Intermediate",
     category: "Relaxation",
     thumbnail: "/images/breathing/diaphragmatic-breathing.jpg",
-    videoSrc: "https://example.com/diaphragmatic-breathing.mp4",
+    videoSrc: "/videos/breathing/diaphragmatic-breathing.mp4",
     benefits: [
       "Reduces stress",
       "Lowers heart rate",
@@ -106,7 +109,7 @@ const breathingExercises: BreathingExercise[] = [
     level: "Intermediate",
     category: "Focus",
     thumbnail: "/images/breathing/alternate-nostril.jpg",
-    videoSrc: "https://example.com/alternate-nostril.mp4",
+    videoSrc: "/videos/breathing/alternate-nostril.mp4",
     benefits: [
       "Improves focus and attention",
       "Balances the nervous system",
@@ -133,7 +136,7 @@ const breathingExercises: BreathingExercise[] = [
     level: "Beginner",
     category: "Energy",
     thumbnail: "/images/breathing/energizing-breath.jpg",
-    videoSrc: "https://example.com/energizing-breath.mp4",
+    videoSrc: "/videos/breathing/energizing-breath.mp4",
     benefits: [
       "Increases energy and alertness",
       "Improves focus",
@@ -157,7 +160,7 @@ const breathingExercises: BreathingExercise[] = [
     level: "Advanced",
     category: "Sleep",
     thumbnail: "/images/breathing/relaxing-breath.jpg",
-    videoSrc: "https://example.com/relaxing-breath.mp4",
+    videoSrc: "/videos/breathing/relaxing-breath.mp4",
     benefits: [
       "Promotes deep relaxation",
       "Prepares mind for meditation",
@@ -183,6 +186,199 @@ const BreathingExercises: React.FC = () => {
   const [sessionInProgress, setSessionInProgress] = useState<string | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<Record<string, number>>({});
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale' | 'rest'>('inhale');
+  const [cycleCount, setCycleCount] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const closeDialogRef = useRef<() => void>(() => {});
+  const phaseSequenceRef = useRef<string[]>([]);
+
+
+  const startGuidedBreathing = () => {
+    if (!selectedExercise) return;
+    
+    // Set up the initial state
+    setBreathingPhase('inhale');
+    setCycleCount(0);
+    
+    // Define breathing patterns for each exercise type
+    const startGuidedBreathing = () => {
+      if (!selectedExercise) return;
+      
+      // Reset states
+      setBreathingPhase('inhale');
+      setCycleCount(0);
+      setPhaseIndex(0);
+      
+      // Define breathing patterns for each exercise type
+      const breathingPatterns = {
+        "box-breathing": {
+          phases: ['inhale', 'hold', 'exhale', 'rest'],
+          durations: {
+            inhale: 4,
+            hold: 4,
+            exhale: 4,
+            rest: 4
+          },
+          totalCycles: 5
+        },
+        "4-7-8-breathing": {
+          phases: ['inhale', 'hold', 'exhale'],
+          durations: {
+            inhale: 4,
+            hold: 7,
+            exhale: 8
+          },
+          totalCycles: 4
+        },
+        "diaphragmatic-breathing": {
+          phases: ['inhale', 'exhale', 'rest'],
+          durations: {
+            inhale: 4,
+            exhale: 6,
+            rest: 1
+          },
+          totalCycles: 6
+        },
+        "alternate-nostril": {
+          phases: ['inhale', 'hold', 'exhale'],
+          durations: {
+            inhale: 4,
+            hold: 2,
+            exhale: 4
+          },
+          totalCycles: 6
+        },
+        "energizing-breath": {
+          phases: ['inhale', 'exhale'],
+          durations: {
+            inhale: 1,
+            exhale: 1
+          },
+          totalCycles: 10
+        },
+        "relaxing-breath": {
+          phases: ['inhale', 'exhale', 'rest'],
+          durations: {
+            inhale: 4,
+            exhale: 6,
+            rest: 1
+          },
+          totalCycles: 6
+        }
+      };
+      
+      // Get the pattern for the selected exercise (default to box breathing if not found)
+      const pattern = breathingPatterns[selectedExercise.id] || breathingPatterns["box-breathing"];
+      
+      // Store phase sequence
+      phaseSequenceRef.current = pattern.phases;
+      
+      // Start with the first phase
+      setBreathingPhase(pattern.phases[0] as any);
+      setSecondsLeft(pattern.durations[pattern.phases[0]]);
+      
+      // Start the timer to guide through the breathing cycle
+      const runTimer = () => {
+        timerRef.current = setInterval(() => {
+          setSecondsLeft(prev => {
+            if (prev <= 1) {
+              // Move to next phase
+              setPhaseIndex(prevIndex => {
+                const nextIndex = (prevIndex + 1) % pattern.phases.length;
+                const nextPhase = pattern.phases[nextIndex] as 'inhale' | 'hold' | 'exhale' | 'rest';
+                
+                // If we've completed a full cycle (back to inhale)
+                if (nextIndex === 0) {
+                  setCycleCount(prevCycle => {
+                    const nextCycle = prevCycle + 1;
+                    
+                    // If we've completed all cycles
+                    if (nextCycle >= pattern.totalCycles) {
+                      clearInterval(timerRef.current!);
+                      // Add a slight delay before completing the session
+                      setTimeout(() => {
+                        completeSession();
+                      }, 500);
+                    }
+                    
+                    return nextCycle;
+                  });
+                }
+                
+                setBreathingPhase(nextPhase);
+                return nextIndex;
+              });
+              
+              // Set duration for next phase
+              const nextPhaseIndex = (phaseIndex + 1) % pattern.phases.length;
+              const nextPhase = pattern.phases[nextPhaseIndex];
+              return pattern.durations[nextPhase];
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      };
+      
+      runTimer();
+      
+      // Start the session now (this will start tracking time)
+      startSession();
+      
+    };
+    startGuidedBreathing();
+  };
+  
+
+
+   // Load saved video progress on component mount
+   useEffect(() => {
+    try {
+      const savedProgress = localStorage.getItem('mindflow_video_progress');
+      if (savedProgress) {
+        setVideoProgress(JSON.parse(savedProgress));
+      }
+    } catch (error) {
+      console.error('Error loading video progress:', error);
+    }
+  }, []);
+  
+  // Update document title and manage active session
+  useEffect(() => {
+    if (sessionInProgress && selectedExercise) {
+      document.title = `Breathing - ${selectedExercise.title} in progress`;
+      
+      return () => {
+        document.title = 'Mindflow - Breathing Exercises';
+      };
+    }
+  }, [sessionInProgress, selectedExercise]);
+
+  useEffect(() => {
+    const exerciseId = searchParams.get('exercise');
+    if (exerciseId) {
+      // Find the exercise by ID
+      const exercise = breathingExercises.find(ex => ex.id === exerciseId);
+      if (exercise) {
+        // Switch to exercises view in case we're in history view
+        setCurrentView('exercises');
+        
+        // Automatically select and open this exercise
+        setSelectedExercise(exercise);
+        setIsDialogOpen(true);
+        
+        // Clear the URL parameter to avoid reopening on page refresh
+        window.history.replaceState({}, document.title, location.pathname);
+      }
+    }
+  }, [searchParams, location.pathname, breathingExercises, setCurrentView, setSelectedExercise, setIsDialogOpen]);
+  
+
   
   // Function to filter exercises based on active tab
   const getFilteredExercises = () => {
@@ -225,9 +421,15 @@ const BreathingExercises: React.FC = () => {
     });
   };
   
-  // Complete a session
+  // Complete a session and close the dialog
   const completeSession = () => {
     if (!selectedExercise || !sessionStartTime) return;
+    
+    // Clear the timer if it exists
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     
     const now = new Date();
     const durationInSeconds = Math.round((now.getTime() - sessionStartTime.getTime()) / 1000);
@@ -236,7 +438,6 @@ const BreathingExercises: React.FC = () => {
     const estimatedMinutes = parseInt(selectedExercise.duration.split(' ')[0]);
     
     // Use either the actual time or estimated time, whichever is greater
-    // This prevents very short sessions if user completes too quickly
     const finalDuration = Math.max(durationInSeconds, estimatedMinutes * 60);
     
     // Update the session in storage
@@ -250,21 +451,21 @@ const BreathingExercises: React.FC = () => {
       });
     }
     
-    setSessionCompleted(true);
+    // Clean up states
+    setSessionCompleted(false);
     setSessionInProgress(null);
     setSessionStartTime(null);
     
-    // Auto-close dialog after a short delay
-    setTimeout(() => {
-      setIsDialogOpen(false);
-      
-      // Reset states when dialog closes
-      setTimeout(() => {
-        setSessionCompleted(false);
-      }, 300);
-    }, 2000);
+    // Reset breathing state
+    setBreathingPhase('inhale');
+    setCycleCount(0);
+    setSecondsLeft(0);
+    
+    // IMPORTANT: Close the dialog immediately
+    setIsDialogOpen(false);
   };
-  
+
+
   // Get badge color based on category
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -281,6 +482,36 @@ const BreathingExercises: React.FC = () => {
     }
   };
   
+  // Add this function
+  const handleCompleteAndClose = () => {
+    // Run the complete session logic
+    if (selectedExercise && sessionStartTime) {
+      const now = new Date();
+      const durationInSeconds = Math.round((now.getTime() - sessionStartTime.getTime()) / 1000);
+      const estimatedMinutes = parseInt(selectedExercise.duration.split(' ')[0]);
+      const finalDuration = Math.max(durationInSeconds, estimatedMinutes * 60);
+      
+      // Update session
+      const recentSessions = require('@/lib/breathing-storage').getRecentSessions(1);
+      if (recentSessions.length > 0) {
+        const session = recentSessions[0];
+        updateBreathingSession({
+          ...session,
+          duration: finalDuration,
+          completed: true
+        });
+      }
+    }
+    
+    // Reset all state variables
+    setSessionCompleted(false);
+    setSessionInProgress(null);
+    setSessionStartTime(null);
+    
+    // Force close dialog
+    setIsDialogOpen(false);
+  };
+
   // Get badge color based on level
   const getLevelColor = (level: string) => {
     switch (level) {
@@ -509,20 +740,28 @@ const BreathingExercises: React.FC = () => {
         <BreathingHistory onStartSession={() => setCurrentView('exercises')} />
       )}
       
-      {/* Exercise Video Dialog */}
-      <Dialog 
-        open={isDialogOpen} 
+     {/* Exercise Video Dialog */}
+     <Dialog
+        open={isDialogOpen}
         onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
+          // If dialog is closing, capture the function that closes it
+          if (!open) {
+            closeDialogRef.current = () => setIsDialogOpen(false);
+            
             // Reset states when dialog closes
             setSessionCompleted(false);
             setSessionInProgress(null);
             setSessionStartTime(null);
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
             }
+          }
+          
+          setIsDialogOpen(open);
         }}
-        >
-        <DialogContent className="max-w-4xl w-full">
+      >
+        <DialogContent className="max-w-4xl w-full" forceMount>
           {selectedExercise && (
             <>
               <DialogHeader>
@@ -533,52 +772,243 @@ const BreathingExercises: React.FC = () => {
               </DialogHeader>
               
               <div className="mt-4">
-                {/* Video placeholder */}
-                <div className="w-full aspect-video bg-gray-200 rounded-md overflow-hidden relative">
-                  <img 
-                    src={selectedExercise.thumbnail} 
-                    alt={selectedExercise.title} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                    {sessionInProgress ? (
-                      <div className="text-center space-y-4">
-                        <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
-                          <div className="h-10 w-10 rounded-full bg-primary animate-pulse"></div>
-                        </div>
-                        <p className="text-white text-lg font-medium">Exercise in Progress</p>
-                        {!sessionCompleted ? (
-                          <Button 
-                            className="bg-green-500 hover:bg-green-600"
-                            onClick={completeSession}
-                          >
-                            <Check className="mr-2 h-4 w-4" />
-                            Mark as Complete
-                          </Button>
-                        ) : (
-                          <div className="bg-green-500 text-white px-4 py-2 rounded-md flex items-center">
-                            <Check className="mr-2 h-5 w-5" />
-                            Completed!
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center space-y-4">
-                        <div className="h-20 w-20 rounded-full bg-white/80 flex items-center justify-center mx-auto">
-                          <Play className="h-10 w-10 text-primary ml-1" />
-                        </div>
-                        <p className="text-white">Video placeholder - Actual video will be added later</p>
+                {/* Video player */}
+                <div className="w-full aspect-video bg-gray-100 rounded-md overflow-hidden relative">
+                  {sessionInProgress ? (
+                    // Guided breathing UI
+                    <div className="bg-gray-900 w-full h-full flex items-center justify-center">
+                    {/* Purple dot indicator */}
+                    <div className="absolute top-4 right-4">
+                      <div className="h-4 w-4 rounded-full bg-purple-500 animate-pulse"></div>
+                    </div>
+                    
+                    {/* Define breathing patterns for each exercise type */}
+                    {(() => {
+                      const breathingPatterns = {
+                        "box-breathing": {
+                          totalCycles: 5,
+                          instructions: {
+                            inhale: 'Breathe in through your nose',
+                            hold: 'Hold your breath',
+                            exhale: 'Breathe out through your mouth',
+                            rest: 'Hold your breath'
+                          }
+                        },
+                        "4-7-8-breathing": {
+                          totalCycles: 4,
+                          instructions: {
+                            inhale: 'Breathe in through your nose',
+                            hold: 'Hold your breath',
+                            exhale: 'Breathe out through your mouth'
+                          }
+                        },
+                        "diaphragmatic-breathing": {
+                          totalCycles: 6,
+                          instructions: {
+                            inhale: 'Breathe in through your nose, fill your belly',
+                            exhale: 'Breathe out slowly through pursed lips',
+                            rest: 'Pause briefly'
+                          }
+                        },
+                        "alternate-nostril": {
+                          totalCycles: 6,
+                          instructions: {
+                            inhale: 'Breathe in through left nostril',
+                            hold: 'Hold your breath',
+                            exhale: 'Breathe out through right nostril'
+                          }
+                        },
+                        "energizing-breath": {
+                          totalCycles: 10,
+                          instructions: {
+                            inhale: 'Quick, strong inhale through your nose',
+                            exhale: 'Quick, forceful exhale through your nose'
+                          }
+                        },
+                        "relaxing-breath": {
+                          totalCycles: 6,
+                          instructions: {
+                            inhale: 'Breathe in deeply through your nose',
+                            exhale: 'Long, slow exhale through your mouth',
+                            rest: 'Pause briefly'
+                          }
+                        }
+                      };
+                      
+                      // Get the pattern for the selected exercise
+                      const pattern = selectedExercise ? 
+                        breathingPatterns[selectedExercise.id] || breathingPatterns["box-breathing"] : 
+                        breathingPatterns["box-breathing"];
                         
-                        <Button 
-                          onClick={startSession}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          <Play className="mr-2 h-4 w-4" />
-                          Begin Exercise
-                        </Button>
+                      return (
+                        <>
+                          {/* Progress indicator */}
+                          <div className="absolute top-6 left-0 w-full px-6">
+                            <div className="w-full bg-gray-700 h-1 rounded-full overflow-hidden">
+                              {(() => {
+                                // Get total cycles for this exercise
+                                const totalCycles = 
+                                  selectedExercise?.id === "box-breathing" ? 5 :
+                                  selectedExercise?.id === "4-7-8-breathing" ? 4 :
+                                  selectedExercise?.id === "energizing-breath" ? 10 : 6;
+                                  
+                                // Calculate progress percentage
+                                const progressPercentage = totalCycles > 0 ? (cycleCount / totalCycles) * 100 : 0;
+                                
+                                return (
+                                  <div 
+                                    className="h-full bg-primary transition-all duration-500 ease-linear" 
+                                    style={{ width: `${progressPercentage}%` }}
+                                  ></div>
+                                );
+                              })()}
+                            </div>
+                            
+                            <div className="flex justify-between text-white/70 text-xs mt-1">
+                              <span>
+                                Cycle {cycleCount + 1} of {
+                                  selectedExercise?.id === "box-breathing" ? 5 :
+                                  selectedExercise?.id === "4-7-8-breathing" ? 4 :
+                                  selectedExercise?.id === "energizing-breath" ? 10 : 6
+                                }
+                              </span>
+                              
+                              <span>
+                                {(() => {
+                                  // Calculate elapsed time
+                                  if (!sessionStartTime) return "0:00";
+                                  const elapsedMs = new Date().getTime() - sessionStartTime.getTime();
+                                  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+                                  const minutes = Math.floor(elapsedSeconds / 60);
+                                  const seconds = elapsedSeconds % 60;
+                                  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                                })()}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="text-center space-y-8">
+                            {/* Breathing circle that expands/contracts */}
+                            <div 
+                              className={`h-40 w-40 rounded-full flex items-center justify-center mx-auto transition-all duration-1000 ${
+                                breathingPhase === 'inhale' ? 'bg-primary/20 scale-100 animate-[expand_4s_ease-in-out]' : 
+                                breathingPhase === 'hold' ? 'bg-primary/30 scale-110' : 
+                                breathingPhase === 'exhale' ? 'bg-primary/20 scale-90 animate-[contract_8s_ease-in-out]' : 
+                                'bg-primary/10 scale-90'
+                              }`}
+                            >
+                              <span className="text-white text-5xl font-bold">{secondsLeft}</span>
+                            </div>
+                            
+                            {/* Instruction text */}
+                            <div>
+                              <p className="text-white text-2xl font-medium mb-2">
+                                {breathingPhase.charAt(0).toUpperCase() + breathingPhase.slice(1)}
+                              </p>
+                              <p className="text-white/70 text-lg">
+                                {pattern.instructions[breathingPhase] || ''}
+                              </p>
+                            </div>
+                            
+                            {/* Manual complete button - with multiple closing approaches */}
+                            <DialogClose asChild>
+                              <Button 
+                                className="bg-white/20 hover:bg-white/30 text-white"
+                                onClick={() => {
+                                  // Put all your session completion logic here
+                                  if (selectedExercise && sessionStartTime) {
+                                    // Clear any timers
+                                    if (timerRef.current) {
+                                      clearInterval(timerRef.current);
+                                      timerRef.current = null;
+                                    }
+                                    
+                                    const now = new Date();
+                                    // Rest of your session completion logic
+                                    // ...
+                                  }
+                                  
+                                  // Reset all states
+                                  setSessionCompleted(false);
+                                  setSessionInProgress(null);
+                                  setSessionStartTime(null);
+                                  setBreathingPhase('inhale');
+                                  setCycleCount(0);
+                                  setSecondsLeft(0);
+                                }}
+                              >
+                                End Exercise
+                              </Button>
+                            </DialogClose>
                       </div>
-                    )}
+                      </>
+                      );
+                    })()}
                   </div>
+                  ) : (
+                    <>
+                      {/* Your existing video player code */}
+                      <video
+                        ref={videoRef}
+                        src={selectedExercise.videoSrc}
+                        poster={selectedExercise.thumbnail}
+                        controls
+                        className="w-full h-full object-cover"
+                        onTimeUpdate={() => {
+                          if (videoRef.current && selectedExercise) {
+                            const currentTime = videoRef.current.currentTime;
+                            // Only save progress if we've watched at least 5 seconds
+                            if (currentTime > 5) {
+                              const newProgress = {
+                                ...videoProgress,
+                                [selectedExercise.id]: currentTime
+                              };
+                              setVideoProgress(newProgress);
+                              localStorage.setItem('mindflow_video_progress', JSON.stringify(newProgress));
+                            }
+                          }
+                        }}
+                        onLoadedMetadata={() => {
+                          if (videoRef.current && selectedExercise && videoProgress[selectedExercise.id]) {
+                            // Set the video to start from the saved position
+                            const savedTime = videoProgress[selectedExercise.id];
+                            // Only restore if we haven't watched the whole thing
+                            if (videoRef.current.duration && savedTime < videoRef.current.duration - 10) {
+                              videoRef.current.currentTime = savedTime;
+                            }
+                          }
+                        }}
+                        onError={(e) => {
+                          // Fallback if video fails to load
+                          const target = e.target as HTMLVideoElement;
+                          target.style.display = 'none';
+                          document.getElementById('video-fallback')?.classList.remove('hidden');
+                        }}
+                      />
+                      
+                      {/* Fallback for when video isn't available */}
+                      <div 
+                        id="video-fallback" 
+                        className="hidden absolute inset-0 flex items-center justify-center bg-black/40"
+                      >
+                        <div className="text-center space-y-4">
+                          <div className="h-20 w-20 rounded-full bg-white/80 flex items-center justify-center mx-auto mb-4">
+                            <Play className="h-10 w-10 text-primary ml-1" />
+                          </div>
+                          <p className="text-white">Video demonstration coming soon</p>
+                        </div>
+                      </div>
+
+                      {/* Begin exercise button - now calls startGuidedBreathing */}
+                      <Button 
+                        onClick={startGuidedBreathing}
+                        className="absolute bottom-4 right-4 bg-primary hover:bg-primary/90 shadow-lg"
+                      >
+                        <Play className="mr-2 h-4 w-4" />
+                        Begin Exercise
+                      </Button>
+                    </>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -632,9 +1062,10 @@ const BreathingExercises: React.FC = () => {
             </>
           )}
         </DialogContent>
-      </Dialog>
+        </Dialog>
     </div>
   );
 };
+
 
 export default BreathingExercises;
