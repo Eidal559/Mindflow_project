@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import StressTracker from "./pages/StressTracker";
 import StressEducation from '@/pages/StressEducation';
 import BreathingExercises from './pages/BreathingExercises'; // Import the new BreathingExercises page
+import Meditation from "./pages/Meditation";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -40,7 +41,7 @@ const App: React.FC = () => {
               <Route path="/app/breathing" element={<DashboardLayout><BreathingExercises /></DashboardLayout>} />
               
               {/* Other app routes */}
-              <Route path="/app/meditation" element={<DashboardLayout><div className="p-6 text-center">Meditation Coming Soon</div></DashboardLayout>} />
+              <Route path="/app/meditation" element={<DashboardLayout><Meditation /></DashboardLayout>} />
               <Route path="/app/music" element={<DashboardLayout><div className="p-6 text-center">Music Coming Soon</div></DashboardLayout>} />
               
               {/* Catch-all route */}

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowRight, BarChart, Brain, HeartPulse } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+
 const AppPage = () => {
   const navigate = useNavigate();
 
