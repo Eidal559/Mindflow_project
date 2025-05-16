@@ -22,6 +22,7 @@ const StressTracker = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [entries, setEntries] = useState<StressEntry[]>([]);
   const [entriesForSelectedDate, setEntriesForSelectedDate] = useState<StressEntry[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Function to switch to input tab
   const switchToInputTab = () => {
@@ -30,14 +31,34 @@ const StressTracker = () => {
   
   // Load entries from localStorage
   useEffect(() => {
-    const loadedEntries = getStressEntries();
-    setEntries(loadedEntries);
+    // Using async/await with an IIFE (Immediately Invoked Function Expression)
+    (async () => {
+      try {
+        setLoading(true);
+        // Get entries asynchronously
+        const loadedEntries = await getStressEntries();
+        // Make sure it's always an array
+        const entriesArray = Array.isArray(loadedEntries) ? loadedEntries : [];
+        setEntries(entriesArray);
+      } catch (error) {
+        console.error("Error loading stress entries:", error);
+        setEntries([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
   
   // Check for entries on the selected date
   useEffect(() => {
+    if (!entries || entries.length === 0) {
+      setEntriesForSelectedDate([]);
+      return;
+    }
+    
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     const existingEntries = entries.filter(entry => {
+      if (!entry || !entry.date) return false;
       const entryDate = new Date(entry.date);
       return format(entryDate, 'yyyy-MM-dd') === dateString;
     });
@@ -50,7 +71,7 @@ const StressTracker = () => {
     setJournalEntry('');
   }, [selectedDate, entries]);
 
-  const handleSaveEntry = () => {
+  const handleSaveEntry = async () => {
     try {
       const dateString = selectedDate.toISOString();
       
@@ -76,8 +97,8 @@ const StressTracker = () => {
         timestamp: timestampDate.toISOString(), // Use timestamp that matches selected date
       };
       
-      // Save to localStorage
-      const savedEntry = addStressEntry(newEntry);
+      // Save to localStorage/API
+      const savedEntry = await addStressEntry(newEntry);
       
       // Add the new entry to the array (don't replace existing ones)
       setEntries(prevEntries => [...prevEntries, savedEntry]);
@@ -96,6 +117,7 @@ const StressTracker = () => {
       console.error(error);
     }
   };
+  
   return (
     <div className="space-y-6">
       <Tabs defaultValue="input" value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -198,11 +220,17 @@ const StressTracker = () => {
         </TabsContent>
         
         <TabsContent value="history">
-          <StressHistory 
-            entries={entries} 
-            setEntries={setEntries} 
-            onSwitchToInput={switchToInputTab} 
-          />
+          {loading ? (
+            <div className="text-center py-8">
+              <p>Loading stress history...</p>
+            </div>
+          ) : (
+            <StressHistory 
+              entries={entries} 
+              setEntries={setEntries} 
+              onSwitchToInput={switchToInputTab} 
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>

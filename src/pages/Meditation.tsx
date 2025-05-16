@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import MeditationPlayer from '@/components/meditation/MeditationPlayer';
+import MeditationHistory from '@/components/meditation/MeditationHistory';
 import { 
   BookOpen as Lotus, // Use BookOpen as replacement for Lotus
   Sun,
@@ -36,7 +38,7 @@ const dummyTechniques: MeditationTechnique[] = [
     level: "Beginner",
     category: "Focus",
     coverImage: "/images/meditation/mindfulness.jpg",
-    backgroundImage: "/images/meditation/mindfulness-bg.jpg",
+    backgroundImage: "/images/meditation/mindfulness.jpg",
   },
   {
     id: "loving-kindness",
@@ -46,7 +48,7 @@ const dummyTechniques: MeditationTechnique[] = [
     level: "Intermediate",
     category: "Emotional Balance",
     coverImage: "/images/meditation/loving-kindness.jpg",
-    backgroundImage: "/images/meditation/loving-kindness-bg.jpg",
+    backgroundImage: "/images/meditation/loving-kindness.jpg",
   },
   {
     id: "body-scan",
@@ -56,7 +58,7 @@ const dummyTechniques: MeditationTechnique[] = [
     level: "Beginner",
     category: "Relaxation",
     coverImage: "/images/meditation/body-scan.jpg",
-    backgroundImage: "/images/meditation/body-scan-bg.jpg",
+    backgroundImage: "/images/meditation/body-scan.jpg",
   },
   {
     id: "zen-meditation",
@@ -66,7 +68,7 @@ const dummyTechniques: MeditationTechnique[] = [
     level: "Advanced",
     category: "Spiritual",
     coverImage: "/images/meditation/zen.jpg",
-    backgroundImage: "/images/meditation/zen-bg.jpg",
+    backgroundImage: "/images/meditation/zen.jpg",
   },
   {
     id: "chakra-meditation",
@@ -76,7 +78,7 @@ const dummyTechniques: MeditationTechnique[] = [
     level: "Intermediate",
     category: "Energy",
     coverImage: "/images/meditation/chakra.jpg",
-    backgroundImage: "/images/meditation/chakra-bg.jpg",
+    backgroundImage: "/images/meditation/chakra.jpg",
   },
   {
     id: "quick-relaxation",
@@ -86,7 +88,7 @@ const dummyTechniques: MeditationTechnique[] = [
     level: "Beginner",
     category: "Relaxation",
     coverImage: "/images/meditation/quick-relief.jpg",
-    backgroundImage: "/images/meditation/quick-relief-bg.jpg",
+    backgroundImage: "/images/meditation/quick-relief.jpg",
   }
 ];
 
@@ -96,6 +98,8 @@ const Meditation: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedTechnique, setSelectedTechnique] = useState<MeditationTechnique | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
+  const [isPlayerDialogOpen, setIsPlayerDialogOpen] = useState(false);
+  
   
   // Get filtered techniques
   const getFilteredTechniques = () => {
@@ -128,9 +132,9 @@ const Meditation: React.FC = () => {
         </div>
       </div>
       
-      {/* View selector with pill design */}
+      {/* View selector */}
       <div className="bg-white rounded-full p-1 shadow-sm inline-flex">
-        <Button
+        <Button 
           variant={currentView === 'techniques' ? 'default' : 'ghost'}
           className={`rounded-full ${currentView === 'techniques' ? 'bg-primary text-primary-foreground' : 'hover:bg-slate-100'}`}
           onClick={() => setCurrentView('techniques')}
@@ -138,7 +142,7 @@ const Meditation: React.FC = () => {
           Meditation Techniques
         </Button>
         <Button
-          variant={currentView === 'history' ? 'default' : 'ghost'}
+          variant={currentView === 'history' ? 'default' : 'ghost'} 
           className={`rounded-full ${currentView === 'history' ? 'bg-primary text-primary-foreground' : 'hover:bg-slate-100'}`}
           onClick={() => setCurrentView('history')}
         >
@@ -356,12 +360,11 @@ const Meditation: React.FC = () => {
             </div>
             </div>
         </div>
-      ) : (
-        <div className="p-6 text-center bg-gray-50 rounded-lg">
-          {/* History view - Will add after completing the main page */}
-          <p>Meditation history will be shown here.</p>
-        </div>
-      )}
+        ) : (
+        // Render the MeditationHistory component
+        <MeditationHistory onStartSession={() => setCurrentView('techniques')} />
+        )}
+        
       
       {/* Technique detail dialog */}
         <Dialog open={isSessionDialogOpen} onOpenChange={setIsSessionDialogOpen}>
@@ -401,19 +404,16 @@ const Meditation: React.FC = () => {
                         </Badge>
                     </div>
                     
-                    <Button 
-                        className="w-full bg-white text-gray-800 hover:bg-white/90"
-                        onClick={() => {
-                        // For now, just close the dialog
-                        setIsSessionDialogOpen(false);
-                        
-                        // Later, we'll connect to the player:
-                        // startSession();
-                        }}
-                    >
-                        <Play className="mr-2 h-4 w-4" />
-                        Begin Meditation
-                    </Button>
+                   <Button 
+                    className="w-full bg-white text-gray-800 hover:bg-white/90"
+                    onClick={() => {
+                      setIsSessionDialogOpen(false);
+                      setIsPlayerDialogOpen(true); // Add this state to your Meditation component
+                    }}
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    Begin Meditation
+                  </Button>
                     </div>
                 </div>
                 </div>
@@ -449,21 +449,6 @@ const Meditation: React.FC = () => {
                         <p className="text-gray-700 mb-4">
                         This {selectedTechnique.duration} meditation will guide you through a series of steps to help you practice {selectedTechnique.title.toLowerCase()}.
                         </p>
-                        
-                        <div className="space-y-3">
-                        {/* Placeholder steps, will be replaced with real data later */}
-                        {[1, 2, 3].map((step, index) => (
-                            <div key={index} className="flex gap-3">
-                            <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center mt-0.5">
-                                <span className="text-primary text-xs font-medium">{index + 1}</span>
-                            </div>
-                            <div>
-                                <h4 className="font-medium text-gray-800">Step {index + 1}</h4>
-                                <p className="text-sm text-gray-600">Instructions for this step will be added later.</p>
-                            </div>
-                            </div>
-                        ))}
-                        </div>
                     </div>
                     </div>
                     
@@ -500,6 +485,14 @@ const Meditation: React.FC = () => {
             )}
         </DialogContent>
         </Dialog>
+        {/* Meditation player dialog */}
+          {selectedTechnique && (
+            <MeditationPlayer 
+              isOpen={isPlayerDialogOpen}
+              setIsOpen={setIsPlayerDialogOpen}
+              technique={selectedTechnique}
+            />
+          )}
     </div>
   );
 };

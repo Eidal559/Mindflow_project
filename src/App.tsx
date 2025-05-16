@@ -14,11 +14,31 @@ import StressTracker from "./pages/StressTracker";
 import StressEducation from '@/pages/StressEducation';
 import BreathingExercises from './pages/BreathingExercises'; // Import the new BreathingExercises page
 import Meditation from "./pages/Meditation";
+import RelaxationMusic from "./pages/RelaxationMusic"; 
+import { useEffect } from 'react';
+import { migrateAllData, hasMigrationRun } from './lib/data-migration';
+import { toast } from './components/ui/sonner';
 
 // Create a client
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
+  // Run data migration on app load
+  useEffect(() => {
+  // Check if migration has already run
+  if (!hasMigrationRun()) {
+    // Run migration
+    migrateAllData()
+      .then(success => {
+        if (success) {
+          toast.success('Data successfully migrated to the cloud');
+        }
+      })
+      .catch(error => {
+        console.error('Error during data migration:', error);
+      });
+  }
+}, []);
   return (
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -42,7 +62,7 @@ const App: React.FC = () => {
               
               {/* Other app routes */}
               <Route path="/app/meditation" element={<DashboardLayout><Meditation /></DashboardLayout>} />
-              <Route path="/app/music" element={<DashboardLayout><div className="p-6 text-center">Music Coming Soon</div></DashboardLayout>} />
+               <Route path="/app/music" element={<DashboardLayout><RelaxationMusic /></DashboardLayout>} />
               
               {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />

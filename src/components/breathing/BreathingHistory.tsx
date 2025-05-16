@@ -32,15 +32,28 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
   
   // Fetch data on component mount
   useEffect(() => {
-    const sessions = getRecentSessions();
-    setRecentSessions(sessions);
+    fetchSessions();
   }, []);
+  
+  // Function to fetch sessions
+  const fetchSessions = () => {
+    try {
+      const sessions = getRecentSessions();
+      setRecentSessions(sessions);
+    } catch (error) {
+      console.error('Error fetching breathing sessions:', error);
+    }
+  };
   
   // Handle delete session
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this session?')) {
-      deleteBreathingSession(id);
-      setRecentSessions(prev => prev.filter(session => session.id !== id));
+      try {
+        deleteBreathingSession(id);
+        setRecentSessions(prev => prev.filter(session => session.id !== id));
+      } catch (error) {
+        console.error('Error deleting session:', error);
+      }
     }
   };
   
@@ -163,44 +176,6 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
           </CardContent>
         </Card>
       </div>
-      
-      {/* Weekly activity chart */}
-      {!hasNoSessions && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Activity</CardTitle>
-            <CardDescription>Your breathing practice over the last 7 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={getWeeklyChartData()}
-                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip formatter={(value, name) => [value, name === 'count' ? 'Sessions' : 'Minutes']} />
-                  <Bar 
-                    name="Sessions" 
-                    dataKey="count" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]} 
-                  />
-                  <Bar 
-                    name="Minutes" 
-                    dataKey="minutes" 
-                    fill="hsl(var(--primary-foreground))"
-                    radius={[4, 4, 0, 0]}
-                    opacity={0.7}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
       
       {/* Recent sessions */}
       <Card>

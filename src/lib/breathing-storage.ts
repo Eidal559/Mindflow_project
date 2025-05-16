@@ -140,7 +140,7 @@ export function getCurrentStreak(): number {
   // Format dates as YYYY-MM-DD for comparison
   const formatDateString = (dateStr: string) => {
     const date = new Date(dateStr);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return format(date, 'yyyy-MM-dd');
   };
   
   // Get today's date as YYYY-MM-DD
