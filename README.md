@@ -66,8 +66,8 @@ cd mindflow
 npm install
 npm run dev
 
-### Core COntribuitors
+### Core Contribuitors
 
 Sean A Cardona
-Raphael Santo
+Raphael Santos
 Ladie Juarbe
