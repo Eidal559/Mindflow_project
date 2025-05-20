@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { format, subDays } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { toast } from '@/components/ui/sonner';
 import { 
   Download, 
   Calendar, 
@@ -20,27 +21,154 @@ import {
   getTotalBreathingTime,
   getMostPracticedExercise,
   deleteBreathingSession,
-  BreathingSession
+  BreathingSession,
+  forceSyncWithDatabase,  
+  getLocalBreathingSessions,
+  getAllSessionsFromDatabase 
 } from '@/lib/breathing-storage';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 
 interface BreathingHistoryProps {
   onStartSession?: () => void;
 }
 
 const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) => {
-  const [recentSessions, setRecentSessions] = useState<BreathingSession[]>([]);
+  const [sessions, setSessions] = useState<BreathingSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
+  const [totalMinutes, setTotalMinutes] = useState(0);
+  const [favoriteExercise, setFavoriteExercise] = useState<{ id: string; name: string; count: number } | null>(null);
+  const [debugSessions, setDebugSessions] = useState<BreathingSession[]>([]);
+  const [showDebug, setShowDebug] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  useEffect(() => {
+    // Inspect current user ID
+    const userId = localStorage.getItem('mindflow_user_id');
+    console.log('Current user ID:', userId);
+    
+    // Debug: Show all items in localStorage
+    const allKeys = Object.keys(localStorage);
+    console.log('All localStorage keys:', allKeys);
+    
+    // Look for any key containing "user"
+    const userKeys = allKeys.filter(key => key.toLowerCase().includes('user'));
+    userKeys.forEach(key => {
+      console.log(`localStorage["${key}"] =`, localStorage.getItem(key));
+    });
+  }, []);
+
+  const loadAllSessions = async () => {
+    try {
+      const allSessions = await getAllSessionsFromDatabase();
+      setDebugSessions(allSessions);
+      setShowDebug(true);
+    } catch (error) {
+      console.error('Error loading all sessions:', error);
+    }
+  };
+
+  const ensureUserId = () => {
+    let userId = localStorage.getItem('mindflow_user_id');
+    if (!userId) {
+      userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+      localStorage.setItem('mindflow_user_id', userId);
+      console.log('Created new user ID:', userId);
+    } else {
+      console.log('Using existing user ID:', userId);
+    }
+    return userId;
+  };
+
+  // Then call this function 
+  ensureUserId();
   
   // Fetch data on component mount
   useEffect(() => {
-    const sessions = getRecentSessions();
-    setRecentSessions(sessions);
+    fetchData();
   }, []);
+  
+  // Function to count displayed sessions
+  const getTotalDisplayedSessions = () => {
+    return sessions.length;
+  };
+  
+  // Function to fetch all data with additional logging
+  const fetchData = async () => {
+    setIsLoading(true);
+    
+    // Debug user ID
+    const userId = localStorage.getItem('mindflow_user_id');
+    console.log('BreathingHistory: Using user ID:', userId);
+    
+    try {
+      console.log('BreathingHistory: Fetching sessions...');
+      
+      // Get sessions with explicit logging
+      const fetchedSessions = await getRecentSessions();
+      console.log('BreathingHistory: Received sessions:', fetchedSessions);
+      setSessions(fetchedSessions);
+      setTotalSessions(fetchedSessions.length);
+      
+      // Get streak
+      const streak = await getCurrentStreak();
+      console.log('BreathingHistory: Current streak:', streak);
+      setStreakDays(streak);
+      
+      // Get total minutes
+      const minutes = await getTotalBreathingTime();
+      console.log('BreathingHistory: Total minutes:', minutes);
+      setTotalMinutes(minutes);
+      
+      // Get favorite exercise
+      const favorite = await getMostPracticedExercise();
+      console.log('BreathingHistory: Favorite exercise:', favorite);
+      setFavoriteExercise(favorite);
+    } catch (error) {
+      console.error('Error fetching breathing data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Handle delete session
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this session?')) {
-      deleteBreathingSession(id);
-      setRecentSessions(prev => prev.filter(session => session.id !== id));
+    setSessionToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Function to execute the deletion
+  const executeDelete = async () => {
+    if (!sessionToDelete) return;
+    
+    try {
+      await deleteBreathingSession(sessionToDelete);
+      
+      // Update local state to reflect the deletion
+      setSessions(prev => prev.filter(session => session.id !== sessionToDelete));
+      
+      // Refresh all stats
+      await fetchData();
+      
+      // Show success message
+      toast?.success('Session deleted successfully');
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      toast?.error('Failed to delete session. Please try again.');
+    } finally {
+      setSessionToDelete(null);
+      setIsDeleteDialogOpen(false);
     }
   };
   
@@ -56,7 +184,7 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
       const dayStr = format(date, 'EEE');
       
       // Count sessions for this day
-      const sessionsForDay = recentSessions.filter(session => {
+      const sessionsForDay = sessions.filter(session => {
         const sessionDate = format(new Date(session.date), 'yyyy-MM-dd');
         return sessionDate === dateStr && session.completed;
       });
@@ -80,7 +208,7 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
     try {
       // Create CSV content
       const headers = ['Date', 'Time', 'Exercise', 'Duration (minutes)', 'Completed'];
-      const rows = getRecentSessions(100).map(session => [
+      const rows = sessions.map(session => [
         format(new Date(session.date), 'yyyy-MM-dd'),
         format(new Date(session.timestamp), 'HH:mm:ss'),
         session.exerciseName,
@@ -110,7 +238,16 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
   };
   
   // Check if we have any sessions
-  const hasNoSessions = recentSessions.length === 0;
+  const hasNoSessions = sessions.length === 0;
+  
+  // If loading, show spinner
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
@@ -122,7 +259,7 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <div className="text-3xl font-bold">{getTotalCompletedSessions()}</div>
+              <div className="text-3xl font-bold">{getTotalDisplayedSessions()}</div>
               <div className="text-sm text-muted-foreground ml-2">sessions</div>
             </div>
           </CardContent>
@@ -134,7 +271,7 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <div className="text-3xl font-bold">{getCurrentStreak()}</div>
+              <div className="text-3xl font-bold">{streakDays}</div>
               <div className="text-sm text-muted-foreground ml-2">days</div>
             </div>
           </CardContent>
@@ -146,7 +283,7 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <div className="text-3xl font-bold">{getTotalBreathingTime()}</div>
+              <div className="text-3xl font-bold">{totalMinutes}</div>
               <div className="text-sm text-muted-foreground ml-2">minutes</div>
             </div>
           </CardContent>
@@ -158,49 +295,11 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
           </CardHeader>
           <CardContent>
             <div className="text-lg font-semibold line-clamp-1">
-              {getMostPracticedExercise()?.name || 'None yet'}
+              {favoriteExercise?.name || 'None yet'}
             </div>
           </CardContent>
         </Card>
       </div>
-      
-      {/* Weekly activity chart */}
-      {!hasNoSessions && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Activity</CardTitle>
-            <CardDescription>Your breathing practice over the last 7 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={getWeeklyChartData()}
-                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip formatter={(value, name) => [value, name === 'count' ? 'Sessions' : 'Minutes']} />
-                  <Bar 
-                    name="Sessions" 
-                    dataKey="count" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]} 
-                  />
-                  <Bar 
-                    name="Minutes" 
-                    dataKey="minutes" 
-                    fill="hsl(var(--primary-foreground))"
-                    radius={[4, 4, 0, 0]}
-                    opacity={0.7}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
       
       {/* Recent sessions */}
       <Card>
@@ -236,7 +335,7 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
             </div>
           ) : (
             <div className="space-y-4">
-              {recentSessions.map((session) => {
+              {sessions.map((session) => {
                 const sessionDate = new Date(session.date);
                 const isToday = format(sessionDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                 const displayDate = isToday
@@ -315,6 +414,95 @@ const BreathingHistory: React.FC<BreathingHistoryProps> = ({ onStartSession }) =
           </div>
         </CardContent>
       </Card>
+      
+      {/* Alert Dialog for deletion confirmation */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-white text-gray-800 border border-gray-200 shadow-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900">Delete Breathing Session</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600">
+              Are you sure you want to delete this breathing session? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={executeDelete}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Debug panel - helpful for troubleshooting */}
+      <div className="mt-8 p-4 border border-dashed border-gray-300 rounded-lg">
+        <h3 className="text-sm text-gray-500 mb-2">Debug Panel</h3>
+        <div className="flex space-x-2 mb-4">
+          <button
+            onClick={async () => {
+              const success = await forceSyncWithDatabase();
+              if (success) {
+                alert('Sync successful! Refreshing...');
+                await fetchData();
+              } else {
+                alert('Sync failed. Check console for details.');
+              }
+            }}
+            className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+          >
+            Force Sync with Database
+          </button>
+          <button
+            onClick={() => {
+              localStorage.setItem('mindflow_user_id', 'user_maqbttrwfz8');
+              alert('User ID set to match database. Refreshing...');
+              fetchData();
+            }}
+            className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+          >
+            Set User ID to Database Match
+          </button>
+          <button
+            onClick={loadAllSessions}
+            className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+          >
+            Load All Database Sessions
+          </button>
+        </div>
+        
+        {/* Show database sessions when debug is active */}
+        {showDebug && debugSessions.length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-medium mb-2">All Sessions in Database ({debugSessions.length})</h4>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {debugSessions.map((session, index) => (
+                <div key={index} className="p-2 bg-gray-100 rounded text-xs font-mono">
+                  <div>ID: {session.id}</div>
+                  <div>User ID: {session.userId}</div>
+                  <div>Exercise: {session.exerciseName}</div>
+                  <div>Date: {session.date}</div>
+                  <div>Duration: {session.duration} seconds</div>
+                  <div>Completed: {session.completed ? 'Yes' : 'No'}</div>
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('mindflow_user_id', session.userId || '');
+                      alert(`User ID set to ${session.userId}. Refreshing...`);
+                      fetchData();
+                    }}
+                    className="mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded"
+                  >
+                    Use This User ID
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

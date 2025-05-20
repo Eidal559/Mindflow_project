@@ -15,9 +15,15 @@ const Dashboard = () => {
   const avgStressLevel = getOverallAverageStress() || 0;
   const lastLoggedDate = getLastCheckInTime() || 'Never';
   const upcomingReminder = "Breathing exercise at 5:00 PM"; // You could implement a reminder system later
+  
   const handleQuickBreathingStart = () => {
     // Navigate to breathing exercises page with a query parameter
     navigate('/app/breathing?exercise=4-7-8-breathing');
+  };
+
+  const handleQuickMeditationStart = () => {
+    // Navigate to meditation page with a parameter for a 5-min session
+    navigate('/app/meditation?technique=quick-mindfulness&duration=5');
   };
 
   return (
@@ -133,14 +139,17 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button variant="outline" className="w-full">
+            <Button 
+              onClick={handleQuickMeditationStart}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
               Begin <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardFooter>
         </Card>
       </div>
-      
       {/* Reminder */}
+      
       <div className="bg-accent rounded-lg p-4 mt-6 flex items-center gap-4">
         <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
           <Clock className="h-5 w-5 text-primary" />

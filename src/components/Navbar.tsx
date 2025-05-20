@@ -2,20 +2,24 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   return (
     <nav className="fixed w-full bg-white bg-opacity-90 backdrop-blur-sm z-50">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
           <div className="rounded-full overflow-hidden border-2 border-primary/20 p-1 bg-white">
             <img 
               src="/lovable-uploads/4546c2ea-9a15-40c9-a1ec-f046c06e8245.png" 
               alt="Mindflow Logo" 
               className="h-10 w-10 object-contain rounded-full"
+      
             />
           </div>
           <span className="font-semibold text-xl text-gray-800">Mindflow</span>
+          </Link>
         </div>
         
         <div className="hidden md:flex items-center gap-6">

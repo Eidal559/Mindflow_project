@@ -8,15 +8,16 @@ const StressEducation = () => {
   const [activeTab, setActiveTab] = useState("what-is-stress");
   
   return (
+    /*header*/
     <div className="space-y-6">
-      <div className="bg-white rounded-lg p-6 shadow-sm border">
+      <div className="relative bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-lg p-6 shadow-lg overflow-hidden">
         <div className="flex items-center gap-4">
           <div className="h-14 w-14 rounded-full bg-primary/20 flex items-center justify-center">
-            <BookOpen className="h-7 w-7 text-primary" />
+            <BookOpen className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Understanding Stress</h1>
-            <p className="text-gray-600">Learn about stress and how to manage it effectively</p>
+            <h1 className="text-3xl font-bold text-white">Understanding Stress</h1>
+            <p className="text-white/80 max-w-2xl">Learn about stress and how to manage it effectively</p>
           </div>
         </div>
       </div>

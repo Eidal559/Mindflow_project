@@ -1,149 +1,100 @@
-// src/lib/stress-storage.ts
-import { format } from 'date-fns';
+import api, { getUserId } from './api-client';
 
 export interface StressEntry {
-  id: string;
+  id?: string;
+  _id?: string;
+  userId?: string;
   date: string;
-  timestamp?: string; // Add the optional timestamp property
+  timestamp?: string;
   level: number;
   factors: string[];
   journal: string;
 }
-  
-  // Storage key for our stress entries
-  const STORAGE_KEY = 'mindflow_stress_entries';
-  
-  // Get all stress entries
-  export function getStressEntries(): StressEntry[] {
-    try {
-      const storedEntries = localStorage.getItem(STORAGE_KEY);
-      if (!storedEntries) return [];
-      return JSON.parse(storedEntries);
-    } catch (error) {
-      console.error('Error retrieving stress entries from localStorage:', error);
-      return [];
-    }
-  }
 
-  // Add a new function to get entries for a specific day
-  export function getEntriesForDate(date: Date): StressEntry[] {
-    const entries = getStressEntries();
-    const targetDateStr = format(date, 'yyyy-MM-dd');
+// Get all stress entries
+export async function getStressEntries(): Promise<StressEntry[]> {
+  try {
+    const response = await api.get('/api/stress');
     
-    return entries.filter(entry => {
-      const entryDate = new Date(entry.date);
-      return format(entryDate, 'yyyy-MM-dd') === targetDateStr;
-    });
+    // Map MongoDB _id to id for frontend compatibility
+    return response.data.map((entry: any) => ({
+      ...entry,
+      id: entry._id || entry.id
+    }));
+  } catch (error) {
+    console.error('Error retrieving stress entries:', error);
+    // Fallback to local storage
+    return getLocalStressEntries();
   }
-  
-  // Add a new stress entry
-  export function addStressEntry(entry: Omit<StressEntry, 'id'>): StressEntry {
-    try {
-      const entries = getStressEntries();
-      
-      // Generate a unique ID with a timestamp to ensure uniqueness
-      const newEntry = {
-        ...entry,
-        id: generateId(),
-        timestamp: new Date().toISOString(), // Add timestamp for sorting by exact time
-      };
-      
-      // Add the new entry regardless of existing entries on the same date
-      entries.push(newEntry);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-      return newEntry;
-    } catch (error) {
-      console.error('Error saving stress entry to localStorage:', error);
-      throw new Error('Failed to save stress entry');
-    }
-  }
-  
-  
-  // Update an existing stress entry
-  export function updateStressEntry(updatedEntry: StressEntry): StressEntry {
-    try {
-      const entries = getStressEntries();
-      const index = entries.findIndex(entry => entry.id === updatedEntry.id);
-      
-      if (index === -1) {
-        throw new Error('Entry not found');
-      }
-      
-      entries[index] = updatedEntry;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-      return updatedEntry;
-    } catch (error) {
-      console.error('Error updating stress entry in localStorage:', error);
-      throw new Error('Failed to update stress entry');
-    }
-  }
-  
-  // Delete a stress entry
-  export function deleteStressEntry(id: string): void {
-    try {
-      const entries = getStressEntries();
-      const filteredEntries = entries.filter(entry => entry.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredEntries));
-    } catch (error) {
-      console.error('Error deleting stress entry from localStorage:', error);
-      throw new Error('Failed to delete stress entry');
-    }
-  }
-  
-  // Get stress entries for a specific date range
-  export function getStressEntriesByDateRange(startDate: Date, endDate: Date): StressEntry[] {
-    try {
-      const entries = getStressEntries();
-      return entries.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= startDate && entryDate <= endDate;
-      });
-    } catch (error) {
-      console.error('Error filtering stress entries by date range:', error);
-      return [];
-    }
-  }
-  
-  // Generate a unique ID for entries
-  function generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-  }
-  
-  // Get average stress level for a specific date range
-  export function getAverageStressLevel(startDate: Date, endDate: Date): number | null {
-    const entries = getStressEntriesByDateRange(startDate, endDate);
+}
+
+// Add a new stress entry
+export async function addStressEntry(entry: Omit<StressEntry, 'id' | '_id' | 'userId'>): Promise<StressEntry> {
+  try {
+    const entryWithUser = {
+      ...entry,
+      userId: getUserId()
+    };
     
-    if (entries.length === 0) return null;
+    const response = await api.post('/api/stress', entryWithUser);
     
-    const sum = entries.reduce((total, entry) => total + entry.level, 0);
-    return parseFloat((sum / entries.length).toFixed(1));
+    // Store in local storage as backup
+    const localEntries = getLocalStressEntries();
+    const newEntry = {
+      ...response.data,
+      id: response.data._id || Date.now().toString()
+    };
+    localStorage.setItem('mindflow_stress_entries', JSON.stringify([...localEntries, newEntry]));
+    
+    return newEntry;
+  } catch (error) {
+    console.error('Error saving stress entry:', error);
+    return addLocalStressEntry(entry);
   }
-  
-  // Get most common stress factors
-  export function getMostCommonFactors(limit: number = 5): { factor: string; count: number }[] {
-    const entries = getStressEntries();
+}
+
+// Update a stress entry
+export async function updateStressEntry(entry: StressEntry): Promise<StressEntry> {
+  try {
+    const id = entry._id || entry.id;
+    const response = await api.put(`/api/stress/${id}`, entry);
     
-    if (entries.length === 0) return [];
-    
-    // Count occurrences of each factor
-    const factorCounts: Record<string, number> = {};
-    
-    entries.forEach(entry => {
-      entry.factors.forEach(factor => {
-        factorCounts[factor] = (factorCounts[factor] || 0) + 1;
-      });
+    // Update in local storage as backup
+    updateLocalStressEntry({
+      ...entry,
+      id: id || ''
     });
     
-    // Convert to array and sort by count
-    return Object.entries(factorCounts)
-      .map(([factor, count]) => ({ factor, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, limit);
+    return {
+      ...response.data,
+      id: response.data._id || response.data.id
+    };
+  } catch (error) {
+    console.error('Error updating stress entry:', error);
+    return updateLocalStressEntry({
+      ...entry,
+      id: entry._id || entry.id || ''
+    });
   }
-  
-  // Get streak (consecutive days with entries)
-  export function getCurrentStreak(): number {
-    const entries = getStressEntries();
+}
+
+// Delete a stress entry
+export async function deleteStressEntry(id: string): Promise<void> {
+  try {
+    await api.delete(`/api/stress/${id}`);
+    
+    // Remove from local storage as backup
+    deleteLocalStressEntry(id);
+  } catch (error) {
+    console.error('Error deleting stress entry:', error);
+    deleteLocalStressEntry(id);
+  }
+}
+
+// Get current streak (consecutive days with entries)
+export function getCurrentStreak(): number {
+  try {
+    const entries = getLocalStressEntries();
     
     if (entries.length === 0) return 0;
     
@@ -186,62 +137,125 @@ export interface StressEntry {
     }
     
     return streak;
+  } catch (error) {
+    console.error('Error calculating streak:', error);
+    return 0;
   }
-
+}
 
 // Get total session count
 export function getTotalSessions(): number {
-  return getStressEntries().length;
+  try {
+    return getLocalStressEntries().length;
+  } catch (error) {
+    console.error('Error getting total sessions:', error);
+    return 0;
+  }
 }
 
 // Get average stress level for all entries
 export function getOverallAverageStress(): number | null {
-  const entries = getStressEntries();
-  
-  if (entries.length === 0) return null;
-  
-  const sum = entries.reduce((total, entry) => total + entry.level, 0);
-  return parseFloat((sum / entries.length).toFixed(1));
+  try {
+    const entries = getLocalStressEntries();
+    
+    if (entries.length === 0) return null;
+    
+    const sum = entries.reduce((total, entry) => total + entry.level, 0);
+    return parseFloat((sum / entries.length).toFixed(1));
+  } catch (error) {
+    console.error('Error calculating average stress:', error);
+    return null;
+  }
 }
 
 // Get last check-in time
 export function getLastCheckInTime(): string | null {
-  const entries = getStressEntries();
-  
-  if (entries.length === 0) return null;
-  
-  // Sort entries by date and time (newest first)
-  const sortedEntries = [...entries].sort((a, b) => {
-    // Sort by date first
-    const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+  try {
+    const entries = getLocalStressEntries();
     
-    // If same date, sort by timestamp
-    if (dateComparison === 0 && a.timestamp && b.timestamp) {
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    if (entries.length === 0) return null;
+    
+    // Sort entries by date and time (newest first)
+    const sortedEntries = [...entries].sort((a, b) => {
+      // Sort by date first
+      const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+      
+      // If same date, sort by timestamp
+      if (dateComparison === 0 && a.timestamp && b.timestamp) {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      }
+      
+      return dateComparison;
+    });
+    
+    // Get the most recent entry
+    const latestEntry = sortedEntries[0];
+    
+    if (!latestEntry) return null;
+    
+    // Use timestamp if available, otherwise use date
+    const date = latestEntry.timestamp ? new Date(latestEntry.timestamp) : new Date(latestEntry.date);
+    
+    // Format the date
+    const today = new Date();
+    const isToday = new Date(date).toDateString() === today.toDateString();
+    
+    if (isToday) {
+      return `Today at ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    } else {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const isYesterday = new Date(date).toDateString() === yesterday.toDateString();
+      
+      return isYesterday ? 
+        `Yesterday at ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}` : 
+        date.toLocaleDateString();
     }
-    
-    return dateComparison;
-  });
-  
-  // Get the most recent entry
-  const latestEntry = sortedEntries[0];
-  
-  if (!latestEntry) return null;
-  
-  // Use timestamp if available, otherwise use date
-  const date = latestEntry.timestamp ? new Date(latestEntry.timestamp) : new Date(latestEntry.date);
-  
-  // Format the date
-  const today = new Date();
-  const isToday = format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
-  
-  if (isToday) {
-    return `Today at ${format(date, 'h:mm a')}`;
-  } else {
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isYesterday = format(date, 'yyyy-MM-dd') === format(yesterday, 'yyyy-MM-dd');
-    
-    return isYesterday ? `Yesterday at ${format(date, 'h:mm a')}` : format(date, 'MMM d, yyyy');
+  } catch (error) {
+    console.error('Error getting last check-in time:', error);
+    return null;
   }
+}
+
+// Local storage functions
+function getLocalStressEntries(): StressEntry[] {
+  try {
+    const storedEntries = localStorage.getItem('mindflow_stress_entries');
+    if (!storedEntries) return [];
+    const parsed = JSON.parse(storedEntries);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('Error retrieving from localStorage:', error);
+    return [];
+  }
+}
+
+function addLocalStressEntry(entry: Omit<StressEntry, 'id' | '_id' | 'userId'>): StressEntry {
+  const entries = getLocalStressEntries();
+  const newEntry = {
+    ...entry,
+    id: Date.now().toString(),
+    userId: getUserId()
+  };
+  entries.push(newEntry);
+  localStorage.setItem('mindflow_stress_entries', JSON.stringify(entries));
+  return newEntry;
+}
+
+function updateLocalStressEntry(entry: StressEntry): StressEntry {
+  const entries = getLocalStressEntries();
+  const index = entries.findIndex(e => e.id === entry.id || e._id === entry.id);
+  
+  if (index >= 0) {
+    entries[index] = { ...entry };
+    localStorage.setItem('mindflow_stress_entries', JSON.stringify(entries));
+  }
+  
+  return entry;
+}
+
+function deleteLocalStressEntry(id: string): void {
+  const entries = getLocalStressEntries();
+  const filteredEntries = entries.filter(e => e.id !== id && e._id !== id);
+  localStorage.setItem('mindflow_stress_entries', JSON.stringify(filteredEntries));
 }

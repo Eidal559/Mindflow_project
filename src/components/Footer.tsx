@@ -2,13 +2,16 @@
 import React from 'react';
 import { Separator } from './ui/separator';
 
+
 const Footer = () => {
   return (
     <footer id="about" className="bg-white py-12 px-4">
       <div className="container mx-auto">
         <div className="grid md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
+            
             <div className="flex items-center gap-2 mb-4">
+        
               <img 
                 src="/lovable-uploads/4546c2ea-9a15-40c9-a1ec-f046c06e8245.png" 
                 alt="Mindflow Logo" 

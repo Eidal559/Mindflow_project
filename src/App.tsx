@@ -1,4 +1,4 @@
-// src/App.tsx - Modified version to use our new BreathingExercises component
+// src/App.tsx - With protected routes
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,7 +12,12 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import StressTracker from "./pages/StressTracker";
 import StressEducation from '@/pages/StressEducation';
-import BreathingExercises from './pages/BreathingExercises'; // Import the new BreathingExercises page
+import BreathingExercises from './pages/BreathingExercises';
+import Meditation from './pages/Meditation';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './components/context/AuthContext';
+import RelaxationMusic from './pages/RelaxationMusic';
+import Profile from './pages/Profile';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -25,27 +30,79 @@ const App: React.FC = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              
-              {/* Dashboard Routes */}
-              <Route path="/app" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
-              <Route path="/app/stress" element={<DashboardLayout><StressTracker /></DashboardLayout>} />
-              
-              {/* Stress education route */}
-              <Route path="/app/stress-education" element={<DashboardLayout><StressEducation /></DashboardLayout>} />
-              
-              {/* Replace the placeholder with our new BreathingExercises component */}
-              <Route path="/app/breathing" element={<DashboardLayout><BreathingExercises /></DashboardLayout>} />
-              
-              {/* Other app routes */}
-              <Route path="/app/meditation" element={<DashboardLayout><div className="p-6 text-center">Meditation Coming Soon</div></DashboardLayout>} />
-              <Route path="/app/music" element={<DashboardLayout><div className="p-6 text-center">Music Coming Soon</div></DashboardLayout>} />
-              
-              {/* Catch-all route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AuthProvider>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                
+                {/* Protected Dashboard Routes */}
+                <Route path="/app" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                
+                 {/* Profile Route */}
+                <Route 
+                  path="/app/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                <Route path="/app/stress" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <StressTracker />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/app/stress-education" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <StressEducation />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/app/breathing" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <BreathingExercises />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/app/meditation" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Meditation />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                {/* Updated Route for Relaxation Music */}
+                <Route 
+                  path="/app/music" 
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <RelaxationMusic />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                
+                {/* Catch-all route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
