@@ -8,6 +8,16 @@ import { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfM
 import { StressEntry, deleteStressEntry } from '@/lib/stress-storage';
 import { toast } from '@/components/ui/sonner';
 import { AlertTriangle, Download, Trash2 } from 'lucide-react';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 
 interface StressHistoryProps {
   entries: StressEntry[];
@@ -17,7 +27,10 @@ interface StressHistoryProps {
 
 const StressHistory: React.FC<StressHistoryProps> = ({ entries, setEntries, onSwitchToInput}) => {
   const [timeframe, setTimeframe] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('day');
-  
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   // Prepare data based on timeframe
   const getFilteredData = () => {
     if (entries.length === 0) return [];
@@ -123,15 +136,24 @@ const StressHistory: React.FC<StressHistoryProps> = ({ entries, setEntries, onSw
   };
   
   const handleDeleteEntry = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this entry? This action cannot be undone.')) {
-      try {
-        deleteStressEntry(id);
-        setEntries(prevEntries => prevEntries.filter(entry => entry.id !== id));
-        toast.success('Entry deleted successfully');
-      } catch (error) {
-        toast.error('Failed to delete entry');
-        console.error(error);
-      }
+    setEntryToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Function to execute the deletion
+  const executeDelete = () => {
+    if (!entryToDelete) return;
+    
+    try {
+      deleteStressEntry(entryToDelete);
+      setEntries(prevEntries => prevEntries.filter(entry => entry.id !== entryToDelete));
+      toast.success('Entry deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete entry');
+      console.error(error);
+    } finally {
+      setEntryToDelete(null);
+      setIsDeleteDialogOpen(false);
     }
   };
   
@@ -170,6 +192,8 @@ const StressHistory: React.FC<StressHistoryProps> = ({ entries, setEntries, onSw
     }
   };
   
+
+ 
   // Display no data message if needed
   if (entries.length === 0) {
     return (
@@ -259,6 +283,22 @@ const StressHistory: React.FC<StressHistoryProps> = ({ entries, setEntries, onSw
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Stress Entry</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this stress entry? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setEntryToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 {entry.factors.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">

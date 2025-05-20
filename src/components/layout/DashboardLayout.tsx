@@ -1,6 +1,6 @@
-// src/components/layout/DashboardLayout.tsx
-import React, { ReactNode, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+// Updated DashboardLayout.tsx with profile link in dropdown
+import React, { ReactNode, useState, useContext } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart2,
   Activity,
@@ -25,6 +25,8 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { AuthContext } from '@/components/context/AuthContext';
+import { toast } from '@/components/ui/sonner';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -33,6 +35,8 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useContext(AuthContext);
   
   const navItems = [
     { name: 'Dashboard', icon: <Activity className="h-5 w-5" />, path: '/app' },
@@ -40,8 +44,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: 'Stress Tracking', icon: <BarChart2 className="h-5 w-5" />, path: '/app/stress' },
     { name: 'Breathing Exercises', icon: <Wind className="h-5 w-5" />, path: '/app/breathing' },
     { name: 'Meditation', icon: <Brain className="h-5 w-5" />, path: '/app/meditation' },
-    { name: 'Relaxation Music', icon: <Music className="h-5 w-5" />, path: '/app/music' }, // Changed from Journal to Relaxation Music
+    { name: 'Relaxation Music', icon: <Music className="h-5 w-5" />, path: '/app/music' },
   ];
+  
+  const handleLogout = () => {
+    logout();
+    toast.success('Successfully logged out');
+    navigate('/');
+  };
+  
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user || !user.name) return 'MF'; // Default: MindFlow
+    
+    const nameParts = user.name.split(' ');
+    if (nameParts.length === 1) return nameParts[0].substring(0, 2).toUpperCase();
+    return (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase();
+  };
   
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -112,27 +131,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 <Button variant="ghost" className="w-full flex items-center justify-start gap-2 px-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src="" />
-                    <AvatarFallback className="bg-primary/20 text-primary">JD</AvatarFallback>
+                    <AvatarFallback className="bg-primary/20 text-primary">{getUserInitials()}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start text-sm">
-                    <span className="font-medium">John Doe</span>
-                    <span className="text-muted-foreground text-xs">john@example.com</span>
+                    <span className="font-medium">{user?.name || 'User'}</span>
+                    <span className="text-muted-foreground text-xs">{user?.email || 'user@example.com'}</span>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/app/profile')}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/app/profile?tab=security')}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -173,7 +192,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </div>
             
             <div className="flex items-center">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/app/profile?tab=security')}>
                 <Settings className="h-5 w-5" />
               </Button>
             </div>

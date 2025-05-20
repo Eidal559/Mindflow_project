@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 
 // Load models
@@ -58,8 +59,10 @@ app.get('/', (req, res) => {
     mongoDBConnected: isConnected
   });
 });
+// ====== AUTH ROUTES =========================================
+app.use('/api/auth', require('./routes/auth'));
 
-// ====== STRESS ROUTES ======
+// ====== STRESS ROUTES ====================================
 app.get('/api/stress', async (req, res) => {
   try {
     const userId = req.query.userId || req.header('x-user-id');
@@ -160,8 +163,92 @@ app.delete('/api/stress/:id', async (req, res) => {
   }
 });
 
-// ====== BREATHING ROUTES ======
-// Similar routes for breathing as with stress...
+// ====== BREATHING ROUTES =========================================
+
+// Discover user ID based on browser fingerprint or other criteria
+app.get('/api/breathing/discover-user', async (req, res) => {
+  try {
+    if (!isConnected) {
+      return res.json({ userId: null });
+    }
+    
+    // Here you would normally use a browser fingerprint
+    // For simplicity, we'll just return the first userId in the database
+    const userIds = await BreathingSession.distinct('userId');
+    
+    if (userIds.length > 0) {
+      return res.json({ userId: userIds[0] });
+    }
+    
+    return res.json({ userId: null });
+  } catch (err) {
+    console.error('Error discovering user ID:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add a debugging endpoint to get all breathing sessions
+app.get('/api/breathing/all', async (req, res) => {
+  try {
+    if (!isConnected) {
+      return res.status(500).json({ msg: 'MongoDB not connected' });
+    }
+    
+    // Get all breathing sessions in the database
+    const sessions = await BreathingSession.find({}).sort({ timestamp: -1 });
+    console.log(`Found ${sessions.length} total breathing sessions in the database`);
+    
+    res.json(sessions);
+  } catch (err) {
+    console.error('Error getting all breathing sessions:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all breathing sessions for a user
+app.get('/api/breathing', async (req, res) => {
+  try {
+    const userId = req.query.userId || req.header('x-user-id');
+    
+    console.log(`GET /api/breathing - Requested for userId: "${userId}"`);
+    
+    if (!userId) {
+      console.log('GET /api/breathing - No userId provided');
+      return res.status(400).json({ msg: 'User ID is required' });
+    }
+    
+    if (!isConnected) {
+      console.log('GET /api/breathing - MongoDB not connected, returning empty array');
+      return res.json([]);
+    }
+    
+    // Get all users in the database for debugging
+    const allUsers = await BreathingSession.distinct('userId');
+    console.log('GET /api/breathing - All userIds in database:', allUsers);
+    
+    // Get sessions for this user
+    const sessions = await BreathingSession.find({ userId }).sort({ timestamp: -1 });
+    console.log(`GET /api/breathing - Found ${sessions.length} sessions for userId "${userId}"`);
+    
+    // For debugging - check if we'd find any sessions with a substring match
+    if (sessions.length === 0 && userId) {
+      const partialSessions = await BreathingSession.find({ 
+        userId: { $regex: userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } 
+      });
+      
+      if (partialSessions.length > 0) {
+        console.log(`GET /api/breathing - Found ${partialSessions.length} sessions with partial userId match`);
+        console.log('GET /api/breathing - First partial match:', partialSessions[0]);
+      }
+    }
+    
+    res.json(sessions);
+  } catch (err) {
+    console.error('GET /api/breathing - Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/breathing', async (req, res) => {
   try {
     const { userId, exerciseId, exerciseName, date, timestamp, duration, completed } = req.body;
@@ -181,7 +268,7 @@ app.post('/api/breathing', async (req, res) => {
       exerciseName,
       date,
       timestamp,
-      duration,
+      duration: duration || 0,
       completed: completed !== undefined ? completed : false
     });
     
@@ -202,16 +289,33 @@ app.put('/api/breathing/:id', async (req, res) => {
       return res.json({ ...req.body, _id: req.params.id });
     }
     
-    const updatedSession = await BreathingSession.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true }
-    );
+    let session;
     
-    if (!updatedSession) {
+    // Check if id is a valid MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      session = await BreathingSession.findById(req.params.id);
+    } else {
+      // If not a valid ObjectId, try to find by client-generated ID field if stored
+      session = await BreathingSession.findOne({ 
+        $or: [
+          { id: req.params.id },
+          { clientId: req.params.id }
+        ]
+      });
+    }
+    
+    if (!session) {
       return res.status(404).json({ msg: 'Session not found' });
     }
     
+    // Update fields
+    Object.keys(req.body).forEach(key => {
+      if (key !== '_id' && key !== 'id') { // Don't overwrite IDs
+        session[key] = req.body[key];
+      }
+    });
+    
+    const updatedSession = await session.save();
     res.json(updatedSession);
   } catch (err) {
     console.error('Error updating breathing session:', err.message);
@@ -221,21 +325,45 @@ app.put('/api/breathing/:id', async (req, res) => {
 
 app.delete('/api/breathing/:id', async (req, res) => {
   try {
+    const { id } = req.params;
+    console.log(`DELETE /api/breathing/${id}`);
+    
     if (!isConnected) {
       console.log('MongoDB not connected, returning mock response');
-      return res.json({ msg: 'Session deleted', id: req.params.id });
+      return res.json({ msg: 'Session deleted', id });
     }
     
-    const session = await BreathingSession.findById(req.params.id);
+    let deletedSession;
     
-    if (!session) {
-      return res.status(404).json({ msg: 'Session not found' });
+    // First try with MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      deletedSession = await BreathingSession.findByIdAndDelete(id);
     }
     
-    await session.deleteOne();
-    res.json({ msg: 'Session deleted', id: req.params.id });
+    // If not found or not a valid ObjectId, try with client ID field
+    if (!deletedSession) {
+      // Try to find by any field that might contain the ID
+      deletedSession = await BreathingSession.findOneAndDelete({
+        $or: [
+          { id: id },
+          { clientId: id }
+        ]
+      });
+    }
+    
+    if (!deletedSession) {
+      console.log(`Session not found with ID: ${id}`);
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    
+    console.log(`Successfully deleted session with ID: ${id}`);
+    res.json({ 
+      msg: 'Session deleted successfully', 
+      id,
+      deletedSession 
+    });
   } catch (err) {
-    console.error('Error deleting breathing session:', err.message);
+    console.error(`Error deleting breathing session ${req.params.id}:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });

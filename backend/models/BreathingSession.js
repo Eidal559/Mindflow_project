@@ -6,6 +6,10 @@ const BreathingSessionSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  clientId: {
+    type: String,
+    index: true
+  }, 
   exerciseId: {
     type: String,
     required: true

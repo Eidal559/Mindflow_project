@@ -14,7 +14,8 @@ COPY package.json package-lock.json ./
 RUN npm install
 
 # iNSTALL ADDITIONAL DEPENDENCIES
-RUN npm install recharts date-fns axios 
+RUN npm install recharts date-fns axios uuid bcryptjs jsonwebtoken --save
+
 
 RUN npm install mongodb
 

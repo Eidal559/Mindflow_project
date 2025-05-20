@@ -8,8 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Wind, Play, Clock, Calendar, Heart, Brain, Info, Award, Check } from 'lucide-react';
 import BreathingHistory from '../components/breathing/BreathingHistory';
 import { useSearchParams, useLocation } from 'react-router-dom';
-import { addBreathingSession, updateBreathingSession } from '@/lib/breathing-storage';
-
+import { 
+  getRecentSessions,  // Note the correct function name
+  addBreathingSession, 
+  updateBreathingSession
+} from '@/lib/breathing-storage';
 
 
 // Define breathing exercise type
@@ -327,6 +330,21 @@ const BreathingExercises: React.FC = () => {
       
       runTimer();
       
+      const ensureUserId = () => {
+        let userId = localStorage.getItem('mindflow_user_id');
+        if (!userId) {
+          userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+          localStorage.setItem('mindflow_user_id', userId);
+          console.log('Created new user ID:', userId);
+        } else {
+          console.log('Using existing user ID:', userId);
+        }
+        return userId;
+      };
+
+      // Then call this function 
+      ensureUserId();
+      
       // Start the session now (this will start tracking time)
       startSession();
       
@@ -403,15 +421,16 @@ const BreathingExercises: React.FC = () => {
   };
 
   // Start a session
-  const startSession = () => {
-    if (!selectedExercise) return;
+ const startSession = async () => {
+  if (!selectedExercise) return;
     
     setSessionInProgress(selectedExercise.id);
     setSessionStartTime(new Date());
     
     // Create a session record with completed=false initially
     const now = new Date();
-    addBreathingSession({
+    try {
+    await addBreathingSession({
       exerciseId: selectedExercise.id,
       exerciseName: selectedExercise.title,
       date: now.toISOString().split('T')[0],
@@ -419,10 +438,13 @@ const BreathingExercises: React.FC = () => {
       duration: 0, // Will be updated when completed
       completed: false
     });
-  };
-  
+  } catch (error) {
+    console.error('Failed to create breathing session:', error);
+    // Continue anyway, as we have local state
+  }
+};
   // Complete a session and close the dialog
-  const completeSession = () => {
+  const completeSession = async () => {
     if (!selectedExercise || !sessionStartTime) return;
     
     // Clear the timer if it exists
@@ -440,15 +462,20 @@ const BreathingExercises: React.FC = () => {
     // Use either the actual time or estimated time, whichever is greater
     const finalDuration = Math.max(durationInSeconds, estimatedMinutes * 60);
     
-    // Update the session in storage
-    const recentSessions = require('@/lib/breathing-storage').getRecentSessions(1);
-    if (recentSessions.length > 0) {
-      const session = recentSessions[0];
-      updateBreathingSession({
-        ...session,
-        duration: finalDuration,
-        completed: true
-      });
+    try {
+      // Update the session in storage
+      const recentSessions = await getRecentSessions(1);
+      if (recentSessions.length > 0) {
+        const session = recentSessions[0];
+        await updateBreathingSession({
+          ...session,
+          duration: finalDuration,
+          completed: true
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update breathing session:', error);
+      // Continue anyway, as we have local state
     }
     
     // Clean up states
@@ -483,7 +510,7 @@ const BreathingExercises: React.FC = () => {
   };
   
   // Add this function
-  const handleCompleteAndClose = () => {
+  const handleCompleteAndClose = async () => {
     // Run the complete session logic
     if (selectedExercise && sessionStartTime) {
       const now = new Date();
@@ -491,15 +518,20 @@ const BreathingExercises: React.FC = () => {
       const estimatedMinutes = parseInt(selectedExercise.duration.split(' ')[0]);
       const finalDuration = Math.max(durationInSeconds, estimatedMinutes * 60);
       
-      // Update session
-      const recentSessions = require('@/lib/breathing-storage').getRecentSessions(1);
-      if (recentSessions.length > 0) {
-        const session = recentSessions[0];
-        updateBreathingSession({
-          ...session,
-          duration: finalDuration,
-          completed: true
-        });
+      try {
+        // Update session
+        const recentSessions = await getRecentSessions(1);
+        if (recentSessions.length > 0) {
+          const session = recentSessions[0];
+          await updateBreathingSession({
+            ...session,
+            duration: finalDuration,
+            completed: true
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update breathing session:', error);
+        // Continue anyway
       }
     }
     

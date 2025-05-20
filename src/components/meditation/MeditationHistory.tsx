@@ -1,9 +1,10 @@
-// src/components/meditation/MeditationHistory.tsx
+// src/components/meditation/MeditationHistory.tsx (Updated)
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Play, BookOpen as Lotus, Clock, Award, Heart, Trash2 } from 'lucide-react';
+import { Play, BookOpen as Lotus, Clock, Award, Heart, Trash2, Download } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import { 
   getMeditationSessions, 
   saveCompletedSession, 
@@ -11,8 +12,11 @@ import {
   getTotalSessions,
   getTotalMeditationTime,
   getMostPracticedMeditation,
+  forceSyncWithDatabase,
+  getLocalMeditationSessions,
   MeditationSession
 } from '@/lib/meditation-storage';
+import { getUserId } from '@/lib/api-client';
 
 interface MeditationHistoryProps {
   onStartSession?: () => void;
@@ -23,6 +27,17 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
   const [isLoading, setIsLoading] = useState(true);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [stats, setStats] = useState({
+    totalSessions: 0,
+    totalMinutes: 0,
+    favorite: null as { id: string; title: string; count: number } | null
+  });
+
+  // Debug user ID when component mounts
+  useEffect(() => {
+    const userId = getUserId();
+    console.log('MeditationHistory component using user ID:', userId);
+  }, []);
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -30,21 +45,33 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
   }, []);
 
   // Function to fetch sessions
-  const fetchSessions = () => {
+  const fetchSessions = async () => {
     setIsLoading(true);
     try {
-      // Get sessions from local storage
-      const fetchedSessions = getMeditationSessions() || [];
+      // Get sessions from API
+      const fetchedSessions = await getMeditationSessions();
+      console.log('Fetched meditation sessions:', fetchedSessions);
       setSessions(fetchedSessions);
+      
+      // Get stats
+      const totalSessions = await getTotalSessions();
+      const totalMinutes = await getTotalMeditationTime();
+      const favorite = await getMostPracticedMeditation();
+      
+      setStats({
+        totalSessions,
+        totalMinutes,
+        favorite
+      });
     } catch (error) {
-      console.error('Error fetching sessions:', error);
+      console.error('Error fetching meditation sessions:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Function to add a test session
-  const addTestSession = () => {
+  const addTestSession = async () => {
     try {
       // Create a test technique
       const testTechnique = {
@@ -55,12 +82,15 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
       };
       
       // Save a 10-minute session
-      saveCompletedSession(testTechnique, 10 * 60);
+      await saveCompletedSession(testTechnique, 10 * 60);
       
       // Refresh the sessions
       setTimeout(fetchSessions, 300);
+      
+      toast.success('Test session added successfully');
     } catch (error) {
       console.error('Error adding test session:', error);
+      toast.error('Failed to add test session');
     }
   };
 
@@ -71,25 +101,80 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
   };
 
   // Function to execute session deletion
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (!sessionToDelete) return;
     
     try {
-      deleteMeditationSession(sessionToDelete);
+      await deleteMeditationSession(sessionToDelete);
+      
       // Update the local state to reflect the deletion
       setSessions(prevSessions => prevSessions.filter(session => session.id !== sessionToDelete));
+      
+      // Refresh stats
+      const totalSessions = await getTotalSessions();
+      const totalMinutes = await getTotalMeditationTime();
+      const favorite = await getMostPracticedMeditation();
+      
+      setStats({
+        totalSessions,
+        totalMinutes,
+        favorite
+      });
+      
+      toast.success('Session deleted successfully');
     } catch (error) {
       console.error('Error deleting session:', error);
+      toast.error('Failed to delete session');
     } finally {
       setSessionToDelete(null);
       setIsDeleteDialogOpen(false);
     }
   };
 
-  // Calculate stats
-  const totalSessions = getTotalSessions();
-  const totalMinutes = getTotalMeditationTime();
-  const mostPracticed = getMostPracticedMeditation();
+  // Handle export data as CSV
+  const handleExport = () => {
+    try {
+      // Create CSV content
+      const headers = ['Date', 'Time', 'Meditation', 'Duration (minutes)', 'Category'];
+      const rows = sessions.map(session => [
+        new Date(session.completedAt).toLocaleDateString(),
+        new Date(session.completedAt).toLocaleTimeString(),
+        session.technique?.title || 'Meditation',
+        Math.round(session.duration / 60),
+        session.technique?.category || 'Unknown'
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `mindflow_meditation_sessions_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Data exported successfully');
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      toast.error('Failed to export data');
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
     
   // Check if we have sessions
   const hasSessions = sessions.length > 0;
@@ -129,6 +214,42 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
             )}
           </div>
         </div>
+        
+        {/* Debug panel for empty state */}
+        <div className="mt-8 p-4 border border-dashed border-gray-300 rounded-lg">
+          <h3 className="text-sm text-gray-500 mb-2">Debug Panel</h3>
+          <div className="flex space-x-2">
+            <button
+              onClick={async () => {
+                const success = await forceSyncWithDatabase();
+                if (success) {
+                  toast.success('Sync successful! Refreshing...');
+                  fetchSessions();
+                } else {
+                  toast.error('Sync failed. Check console for details.');
+                }
+              }}
+              className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+            >
+              Force Sync with Database
+            </button>
+            <button
+              onClick={() => {
+                console.log('Current user ID:', getUserId());
+                console.log('Local sessions:', getLocalMeditationSessions());
+              }}
+              className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+            >
+              Log Debug Info
+            </button>
+            <button
+              onClick={addTestSession}
+              className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+            >
+              Add Test Session
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -144,7 +265,7 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <div className="text-3xl font-bold">{totalSessions}</div>
+              <div className="text-3xl font-bold">{stats.totalSessions}</div>
             </div>
           </CardContent>
         </Card>
@@ -155,7 +276,7 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
           </CardHeader>
           <CardContent>
             <div className="flex items-center">
-              <div className="text-3xl font-bold">{totalMinutes}</div>
+              <div className="text-3xl font-bold">{stats.totalMinutes}</div>
               <div className="text-sm text-muted-foreground ml-2">minutes</div>
             </div>
           </CardContent>
@@ -167,7 +288,7 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
           </CardHeader>
           <CardContent>
             <div className="text-lg font-semibold line-clamp-1">
-              {mostPracticed?.title || 'None yet'}
+              {stats.favorite?.title || 'None yet'}
             </div>
           </CardContent>
         </Card>
@@ -183,6 +304,11 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
                 Your meditation history
               </CardDescription>
             </div>
+            
+            <Button variant="outline" size="sm" className="gap-1" onClick={handleExport}>
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -241,7 +367,7 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
         </CardHeader>
         <CardContent>
           <p>
-            You've completed {totalSessions} meditation sessions for a total of {totalMinutes} minutes. 
+            You've completed {stats.totalSessions} meditation sessions for a total of {stats.totalMinutes} minutes. 
             Regular meditation practice can help reduce stress and improve focus and mindfulness.
           </p>
           <div className="mt-4">
@@ -273,6 +399,42 @@ const MeditationHistory: React.FC<MeditationHistoryProps> = ({ onStartSession })
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Debug panel */}
+      <div className="mt-8 p-4 border border-dashed border-gray-300 rounded-lg">
+        <h3 className="text-sm text-gray-500 mb-2">Debug Panel</h3>
+        <div className="flex space-x-2">
+          <button
+            onClick={async () => {
+              const success = await forceSyncWithDatabase();
+              if (success) {
+                toast.success('Sync successful! Refreshing...');
+                fetchSessions();
+              } else {
+                toast.error('Sync failed. Check console for details.');
+              }
+            }}
+            className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+          >
+            Force Sync with Database
+          </button>
+          <button
+            onClick={() => {
+              console.log('Current user ID:', getUserId());
+              console.log('Local sessions:', getLocalMeditationSessions());
+            }}
+            className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+          >
+            Log Debug Info
+          </button>
+          <button
+            onClick={addTestSession}
+            className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded"
+          >
+            Add Test Session
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

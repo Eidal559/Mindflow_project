@@ -47,7 +47,7 @@ const musicTracks: Record<string, MusicTrack[]> = {
       artist: "Sleep Masters",
       duration: "5:10",
       file: "/audio/meditation/relaxation.mp3",
-      coverArt: "/images/meditation/body-scan.jpg"
+      coverArt: "/images/meditation/music/relaxation.jpg"
     },
     {
       id: "sleep-2",
@@ -55,7 +55,7 @@ const musicTracks: Record<string, MusicTrack[]> = {
       artist: "Dream Weavers",
       duration: "6:22",
       file: "/audio/meditation/piano.mp3",
-      coverArt: "/images/meditation/zen.jpg"
+      coverArt: "/images/meditation/music/piano.jpg"
     }
   ],
   "relax": [
@@ -65,7 +65,7 @@ const musicTracks: Record<string, MusicTrack[]> = {
       artist: "Nature Sounds",
       duration: "4:30",
       file: "/audio/meditation/garden.mp3",
-      coverArt: "/images/meditation/loving-kindness.jpg"
+      coverArt: "/images/meditation/music/garden.jpg"
     },
     {
       id: "relax-2",
@@ -73,7 +73,7 @@ const musicTracks: Record<string, MusicTrack[]> = {
       artist: "Classical Relaxation",
       duration: "3:45",
       file: "/audio/meditation/piano.mp3",
-      coverArt: "/images/meditation/chakra.jpg"
+      coverArt: "/images/meditation/music/piano.jpg"
     }
   ],
   "focus": [
@@ -83,7 +83,7 @@ const musicTracks: Record<string, MusicTrack[]> = {
       artist: "Concentration Masters",
       duration: "7:15",
       file: "/audio/meditation/focus.mp3",
-      coverArt: "/images/meditation/mindfulness.jpg"
+      coverArt: "/images/meditation/music/focus.jpg"
     },
     {
       id: "focus-2",
@@ -91,7 +91,7 @@ const musicTracks: Record<string, MusicTrack[]> = {
       artist: "Brain Waves",
       duration: "5:30",
       file: "/audio/meditation/clarity.mp3",
-      coverArt: "/images/meditation/zen-breathing.jpg"
+      coverArt: "/images/meditation/music/clarity.jpg"
     },
     {
       id: "focus-3",
@@ -99,7 +99,7 @@ const musicTracks: Record<string, MusicTrack[]> = {
       artist: "Mind Builders",
       duration: "6:10",
       file: "/audio/meditation/alpha.mp3",
-      coverArt: "/images/meditation/zazen-posture.jpg"
+      coverArt: "/images/meditation/music/alpha.jpg"
     }
   ]
 };

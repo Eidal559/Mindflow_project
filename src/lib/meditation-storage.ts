@@ -1,5 +1,11 @@
-// src/lib/meditation-storage.ts
+// src/lib/meditation-storage.ts (Updated)
 import { format } from 'date-fns';
+import axios from 'axios';
+import { getUserId } from './api-client'; // Import getUserId directly from api-client
+
+// API URL - adjust based on your backend setup
+const API_URL = 'http://localhost:5000/api/meditation';
+console.log('Using Meditation API URL:', API_URL);
 
 // Define types for meditation data
 export interface MeditationSession {
@@ -14,13 +20,74 @@ export interface MeditationSession {
   completedAt: string;
   duration: number; // in seconds
   completed: boolean;
+  userId?: string; // Added for MongoDB
+  _id?: string; // MongoDB ID
 }
 
-// Storage key for meditation sessions
+// Storage key for local storage fallback
 const STORAGE_KEY = 'mindflow_meditation_sessions';
 
-// Get all meditation sessions
-export function getMeditationSessions(): MeditationSession[] {
+// Save sessions to localStorage for offline use
+function saveSessionsToLocalStorage(sessions: MeditationSession[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    console.log(`Saved ${sessions.length} meditation sessions to localStorage`);
+  } catch (error) {
+    console.error('Error saving meditation sessions to localStorage:', error);
+  }
+}
+
+// Convert MongoDB document to our frontend model
+function convertFromDb(dbSession: any): MeditationSession {
+  // Add debug logging for troubleshooting
+  console.log('Converting meditation session from DB:', dbSession);
+  
+  return {
+    id: dbSession._id || dbSession.id || '',
+    technique: {
+      id: dbSession.technique?.id || 'unknown',
+      title: dbSession.technique?.title || 'Meditation',
+      category: dbSession.technique?.category,
+      image: dbSession.technique?.image
+    },
+    startedAt: dbSession.startedAt,
+    completedAt: dbSession.completedAt,
+    duration: dbSession.duration || 0,
+    completed: dbSession.completed !== undefined ? dbSession.completed : true
+  };
+}
+
+// Get all meditation sessions from API with localStorage fallback
+export async function getMeditationSessions(): Promise<MeditationSession[]> {
+  try {
+    const userId = getUserId(); // Use the getUserId from api-client
+    console.log('Getting meditation sessions for user:', userId);
+    
+    // Try to get from API
+    const response = await axios.get(`${API_URL}?userId=${userId}`, {
+      headers: { 'x-user-id': userId }
+    });
+    
+    console.log(`Received ${response.data.length} meditation sessions from API`);
+    
+    // Convert API data
+    const apiSessions = Array.isArray(response.data) ? response.data.map(convertFromDb) : [];
+    
+    // Save to localStorage for offline use
+    saveSessionsToLocalStorage(apiSessions);
+    
+    return apiSessions;
+  } catch (error) {
+    console.error('Error retrieving meditation sessions from API:', error);
+    console.log('Falling back to localStorage');
+    
+    // Get from localStorage
+    return getLocalMeditationSessions();
+  }
+}
+
+// Get sessions from localStorage (fallback)
+export function getLocalMeditationSessions(): MeditationSession[] {
   try {
     const storedSessions = localStorage.getItem(STORAGE_KEY);
     if (!storedSessions) return [];
@@ -32,19 +99,53 @@ export function getMeditationSessions(): MeditationSession[] {
 }
 
 // Add a new meditation session
-export function addMeditationSession(session: Omit<MeditationSession, 'id'>): MeditationSession {
+export async function addMeditationSession(session: Omit<MeditationSession, 'id'>): Promise<MeditationSession> {
   try {
-    const sessions = getMeditationSessions();
+    const userId = getUserId(); // Use the getUserId from api-client
+    console.log('Adding meditation session for user:', userId);
+    
+    const sessionWithUser = { 
+      ...session, 
+      userId,
+      clientId: generateId() // Add a client-side ID for reference
+    };
+    
+    console.log('Sending meditation session data to API:', sessionWithUser);
+    const response = await axios.post(API_URL, sessionWithUser);
+    console.log('Meditation session saved to API:', response.data);
+    
+    const newSession = convertFromDb(response.data);
+    
+    // Update local storage with the new session
+    const localSessions = getLocalMeditationSessions();
+    localSessions.unshift(newSession);
+    saveSessionsToLocalStorage(localSessions);
+    
+    return newSession;
+  } catch (error) {
+    console.error('Error saving meditation session to API:', error);
+    console.log('Falling back to localStorage');
+    
+    // Add to localStorage only
+    return addLocalMeditationSession(session);
+  }
+}
+
+// Add to localStorage as fallback
+function addLocalMeditationSession(session: Omit<MeditationSession, 'id'>): MeditationSession {
+  try {
+    const sessions = getLocalMeditationSessions();
     
     // Generate a unique ID
     const newSession = {
       ...session,
-      id: Date.now().toString(),
+      id: generateId(),
+      userId: getUserId() // Use the getUserId from api-client
     };
     
     // Add to beginning of array (most recent first)
     sessions.unshift(newSession);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    saveSessionsToLocalStorage(sessions);
     return newSession;
   } catch (error) {
     console.error('Error saving meditation session to localStorage:', error);
@@ -53,20 +154,44 @@ export function addMeditationSession(session: Omit<MeditationSession, 'id'>): Me
 }
 
 // Delete a meditation session
-export function deleteMeditationSession(id: string): void {
+export async function deleteMeditationSession(id: string): Promise<void> {
   try {
-    const sessions = getMeditationSessions();
-    const filteredSessions = sessions.filter(session => session.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredSessions));
+    console.log('Deleting meditation session with ID:', id);
+    
+    // Make sure we have the correct headers
+    const userId = getUserId(); // Use the getUserId from api-client
+    const headers = { 'x-user-id': userId };
+    
+    // Call the API to delete the session
+    await axios.delete(`${API_URL}/${id}`, { headers });
+    console.log('Meditation session successfully deleted from database');
+    
+    // Also remove from local storage for offline consistency
+    const sessions = getLocalMeditationSessions();
+    const updatedSessions = sessions.filter(session => session.id !== id);
+    saveSessionsToLocalStorage(updatedSessions);
+    
   } catch (error) {
-    console.error('Error deleting meditation session from localStorage:', error);
+    console.error('Error deleting meditation session:', error);
+    
+    // Even if the API call fails, remove from localStorage
+    try {
+      const sessions = getLocalMeditationSessions();
+      const updatedSessions = sessions.filter(session => session.id !== id);
+      saveSessionsToLocalStorage(updatedSessions);
+      console.log('Session removed from local storage despite API error');
+    } catch (localError) {
+      console.error('Error removing session from localStorage:', localError);
+    }
+    
     throw new Error('Failed to delete meditation session');
   }
 }
 
 // Function to save a completed meditation session
-export function saveCompletedSession(technique: any, durationInSeconds: number): void {
+export async function saveCompletedSession(technique: any, durationInSeconds: number): Promise<void> {
   try {
+    console.log('Saving completed meditation session:', technique.title, 'Duration:', durationInSeconds);
     const now = new Date();
     
     // Create a simplified version of the technique data
@@ -86,33 +211,68 @@ export function saveCompletedSession(technique: any, durationInSeconds: number):
       completed: true
     };
     
-    // Add the session to storage
-    addMeditationSession(session);
+    // Add the session to API storage
+    await addMeditationSession(session);
+    console.log('Meditation session saved successfully');
   } catch (error) {
     console.error('Error saving completed meditation session:', error);
+    
+    // Try to save to localStorage as fallback
+    try {
+      const now = new Date();
+      const simplifiedTechnique = {
+        id: technique.id || 'unknown',
+        title: technique.title || 'Meditation',
+        category: technique.category || 'Focus',
+        image: technique.backgroundImage || technique.coverImage || '/images/meditation/default.jpg'
+      };
+      
+      const session: Omit<MeditationSession, 'id'> = {
+        technique: simplifiedTechnique,
+        startedAt: new Date(now.getTime() - durationInSeconds * 1000).toISOString(),
+        completedAt: now.toISOString(),
+        duration: durationInSeconds,
+        completed: true
+      };
+      
+      addLocalMeditationSession(session);
+      console.log('Meditation session saved to localStorage as fallback');
+    } catch (fallbackError) {
+      console.error('Failed to save to localStorage too:', fallbackError);
+    }
   }
 }
 
 // Get recent sessions
-export function getRecentSessions(limit: number = 10): MeditationSession[] {
+export async function getRecentSessions(limit: number = 10): Promise<MeditationSession[]> {
   try {
-    const sessions = getMeditationSessions();
+    console.log(`Getting recent ${limit} meditation sessions`);
+    const sessions = await getMeditationSessions();
+    console.log(`Total meditation sessions available: ${sessions.length}`);
+    
+    // Return limited number of sessions (already sorted in getMeditationSessions)
     return sessions.slice(0, limit);
   } catch (error) {
-    console.error('Error getting recent sessions:', error);
+    console.error('Error fetching recent meditation sessions:', error);
     return [];
   }
 }
 
 // Get total sessions count
-export function getTotalSessions(): number {
-  return getMeditationSessions().length;
+export async function getTotalSessions(): Promise<number> {
+  try {
+    const sessions = await getMeditationSessions();
+    return sessions.length;
+  } catch (error) {
+    console.error('Error getting total meditation sessions count:', error);
+    return 0;
+  }
 }
 
 // Get total meditation time in minutes
-export function getTotalMeditationTime(): number {
+export async function getTotalMeditationTime(): Promise<number> {
   try {
-    const sessions = getMeditationSessions();
+    const sessions = await getMeditationSessions();
     
     if (sessions.length === 0) return 0;
     
@@ -125,9 +285,9 @@ export function getTotalMeditationTime(): number {
 }
 
 // Get meditation streak (consecutive days)
-export function getMeditationStreak(): number {
+export async function getMeditationStreak(): Promise<number> {
   try {
-    const sessions = getMeditationSessions();
+    const sessions = await getMeditationSessions();
     
     if (sessions.length === 0) return 0;
     
@@ -185,9 +345,9 @@ export function getMeditationStreak(): number {
 }
 
 // Get most practiced meditation type
-export function getMostPracticedMeditation(): { id: string; title: string; count: number } | null {
+export async function getMostPracticedMeditation(): Promise<{ id: string; title: string; count: number } | null> {
   try {
-    const sessions = getMeditationSessions();
+    const sessions = await getMeditationSessions();
     
     if (sessions.length === 0) return null;
     
@@ -215,7 +375,38 @@ export function getMostPracticedMeditation(): { id: string; title: string; count
   }
 }
 
+// Generate a unique ID for sessions (fallback)
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
 // Clear all meditation sessions (for testing)
 export function clearAllSessions(): void {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+// Force-sync with the database (for debugging)
+export async function forceSyncWithDatabase(): Promise<boolean> {
+  try {
+    const userId = getUserId(); // Use the getUserId from api-client
+    console.log('Forcing sync with database using userId:', userId);
+    
+    if (!userId) return false;
+    
+    // Get sessions from API
+    const response = await axios.get(`${API_URL}?userId=${userId}`, {
+      headers: { 'x-user-id': userId }
+    });
+    
+    console.log(`Force sync found ${response.data.length} meditation sessions`);
+    
+    // Convert and save to localStorage
+    const apiSessions = Array.isArray(response.data) ? response.data.map(convertFromDb) : [];
+    saveSessionsToLocalStorage(apiSessions);
+    
+    return apiSessions.length > 0;
+  } catch (error) {
+    console.error('Error during force sync for meditation:', error);
+    return false;
+  }
 }

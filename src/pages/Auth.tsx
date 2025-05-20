@@ -1,8 +1,8 @@
-
-import React, { useState } from "react";
+// src/pages/Auth.tsx
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -12,13 +12,17 @@ import { z } from "zod";
 import { toast } from "@/components/ui/sonner";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useContext } from "react";
+import { AuthContext } from "@/components/context/AuthContext";
 
+// Define login form schema
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   rememberMe: z.boolean().default(false),
 });
 
+// Define registration form schema
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
@@ -39,7 +43,23 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const Auth = () => {
-  const [activeTab, setActiveTab] = useState("login");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, register: registerUser, isLoggedIn } = useContext(AuthContext);
+  
+  // Get tab from query params or default to login
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') === 'register' ? 'register' : 'login';
+  });
+
+  // If user is already logged in, redirect to dashboard
+  useEffect(() => {
+    if (isLoggedIn) {
+      const from = location.state?.from || '/app';
+      navigate(from, { replace: true });
+    }
+  }, [isLoggedIn, navigate, location]);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -62,25 +82,43 @@ const Auth = () => {
     },
   });
 
-  const handleLoginSubmit = (values: LoginFormValues) => {
-    console.log(values);
-    toast.success("Login successful! Redirecting...");
-    // In a real app, here you would implement authentication logic
-    setTimeout(() => {
-      window.location.href = "/app";
-    }, 2000);
+  const handleLoginSubmit = async (values: LoginFormValues) => {
+    try {
+      // Only pass email and password to the login function
+      // Check your AuthContext definition to ensure this matches the expected parameters
+       await login({ email: values.email, password: values.password });
+      
+      toast.success("Login successful!");
+      navigate('/app');
+    } catch (error: any) {
+      toast.error(error.message || "Login failed. Please try again.");
+    } finally {
+      loginForm.reset();
+    }
   };
 
-  const handleRegisterSubmit = (values: RegisterFormValues) => {
-    console.log(values);
-    toast.success("Account created! Verification email sent.");
-    // In a real app, here you would implement registration logic
-    if (values.notifications) {
-      toast.info("You will receive notifications to your email");
+  const handleRegisterSubmit = async (values: RegisterFormValues) => {
+    try {
+      // Adjust this call based on what your registerUser function expects
+      // It might expect different parameters or a different structure
+      await registerUser({
+        name: values.name,
+        email: values.email,
+        password: values.password
+      });
+      
+      toast.success("Account created successfully!");
+      
+      if (values.notifications) {
+        toast.info("You will receive notifications to your email");
+      }
+      
+      navigate('/app');
+    } catch (error: any) {
+      toast.error(error.message || "Registration failed. Please try again.");
+    } finally {
+      registerForm.reset();
     }
-    setTimeout(() => {
-      setActiveTab("login");
-    }, 2000);
   };
 
   return (
@@ -100,7 +138,7 @@ const Auth = () => {
             </div>
             <h1 className="text-2xl font-bold text-center mb-6">Welcome to Mindflow</h1>
             
-            <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-2 mb-6">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
@@ -156,7 +194,9 @@ const Auth = () => {
                       )}
                     />
                     
-                    <Button type="submit" className="w-full">Login</Button>
+                    <Button type="submit" className="w-full" disabled={loginForm.formState.isSubmitting}>
+                      {loginForm.formState.isSubmitting ? 'Signing in...' : 'Login'}
+                    </Button>
                   </form>
                 </Form>
                 
@@ -267,7 +307,9 @@ const Auth = () => {
                       )}
                     />
                     
-                    <Button type="submit" className="w-full">Create Account</Button>
+                    <Button type="submit" className="w-full" disabled={registerForm.formState.isSubmitting}>
+                      {registerForm.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
+                    </Button>
                   </form>
                 </Form>
               </TabsContent>
